@@ -103,12 +103,10 @@ public final class TelemetryCoordinator {
 
     public func startTimer() {
         guard timer == nil else { return }
-        let newTimer = DispatchSource.makeTimerSource(queue: queue)
+        let newTimer = DispatchSource.makeTimerSource(queue: .main)
         newTimer.schedule(deadline: .now(), repeating: samplingInterval, leeway: .milliseconds(100))
         newTimer.setEventHandler { [weak self] in
-            Task { @MainActor [weak self] in
-                self?.tick()
-            }
+            self?.tick()
         }
         newTimer.resume()
         self.timer = newTimer
