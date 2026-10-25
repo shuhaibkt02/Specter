@@ -11,12 +11,21 @@ public final class TelemetryCoordinator {
     public var currentNetwork: NetworkStats = NetworkStats()
     public var currentDisk: DiskStats = DiskStats()
     public var currentBattery: BatteryStats = BatteryStats()
+    public var currentAppleSilicon: AppleSiliconStats = AppleSiliconStats()
     public var topProcesses: [ProcessSnapshot] = []
     
+    public var backgroundInterval: Double = 2.0 {
+        didSet {
+            if !isPopoverPresented {
+                samplingInterval = backgroundInterval
+            }
+        }
+    }
+
     /// Controls two-tier adaptive polling.
     public var isPopoverPresented: Bool = false {
         didSet {
-            samplingInterval = isPopoverPresented ? 1.0 : 2.0
+            samplingInterval = isPopoverPresented ? 1.0 : backgroundInterval
             if isPopoverPresented {
                 tick()
             }
@@ -33,8 +42,10 @@ public final class TelemetryCoordinator {
     private var timer: DispatchSourceTimer?
     private let queue = DispatchQueue(label: "com.personal.StatsBar.timerQueue", qos: .utility)
 
-    public init(provider: TelemetryProviding, autoStart: Bool = true) {
+    public init(provider: TelemetryProviding, backgroundInterval: Double = 2.0, autoStart: Bool = true) {
         self.provider = provider
+        self.backgroundInterval = backgroundInterval
+        self.samplingInterval = backgroundInterval
         if autoStart {
             startTimer()
         }
@@ -54,6 +65,7 @@ public final class TelemetryCoordinator {
             let network = provider.sampleNetwork()
             let disk = provider.sampleDisk()
             let battery = provider.sampleBattery()
+            let silicon = isPresented ? provider.sampleAppleSilicon() : nil
             let procs = isPresented ? provider.sampleTopProcesses(limit: 5) : []
 
             Task { @MainActor [weak self] in
@@ -68,6 +80,9 @@ public final class TelemetryCoordinator {
                 self.currentDisk = disk
                 self.currentBattery = battery
                 if isPresented {
+                    if let silicon {
+                        self.currentAppleSilicon = silicon
+                    }
                     self.topProcesses = procs
                 }
             }

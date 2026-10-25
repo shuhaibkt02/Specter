@@ -7,6 +7,7 @@ public protocol TelemetryProviding: Sendable {
     func sampleNetwork() -> NetworkStats
     func sampleDisk() -> DiskStats
     func sampleBattery() -> BatteryStats
+    func sampleAppleSilicon() -> AppleSiliconStats
     func sampleTopProcesses(limit: Int) -> [ProcessSnapshot]
 }
 
@@ -17,6 +18,7 @@ public final class MockTelemetryProvider: TelemetryProviding, @unchecked Sendabl
     public var networkToReturn: NetworkStats
     public var diskToReturn: DiskStats
     public var batteryToReturn: BatteryStats
+    public var appleSiliconToReturn: AppleSiliconStats
     public var processesToReturn: [ProcessSnapshot]
     
     public private(set) var cpuSampleCount: Int = 0
@@ -24,6 +26,7 @@ public final class MockTelemetryProvider: TelemetryProviding, @unchecked Sendabl
     public private(set) var networkSampleCount: Int = 0
     public private(set) var diskSampleCount: Int = 0
     public private(set) var batterySampleCount: Int = 0
+    public private(set) var appleSiliconSampleCount: Int = 0
     public private(set) var processSampleCount: Int = 0
 
     public init(
@@ -32,6 +35,7 @@ public final class MockTelemetryProvider: TelemetryProviding, @unchecked Sendabl
         network: NetworkStats = NetworkStats(),
         disk: DiskStats = DiskStats(),
         battery: BatteryStats = BatteryStats(),
+        appleSilicon: AppleSiliconStats = AppleSiliconStats(),
         processes: [ProcessSnapshot] = []
     ) {
         self.cpuToReturn = cpu
@@ -39,6 +43,7 @@ public final class MockTelemetryProvider: TelemetryProviding, @unchecked Sendabl
         self.networkToReturn = network
         self.diskToReturn = disk
         self.batteryToReturn = battery
+        self.appleSiliconToReturn = appleSilicon
         self.processesToReturn = processes
     }
 
@@ -65,6 +70,11 @@ public final class MockTelemetryProvider: TelemetryProviding, @unchecked Sendabl
     public func sampleBattery() -> BatteryStats {
         batterySampleCount += 1
         return batteryToReturn
+    }
+
+    public func sampleAppleSilicon() -> AppleSiliconStats {
+        appleSiliconSampleCount += 1
+        return appleSiliconToReturn
     }
 
     public func sampleTopProcesses(limit: Int) -> [ProcessSnapshot] {

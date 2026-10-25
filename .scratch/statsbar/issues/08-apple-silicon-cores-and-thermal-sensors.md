@@ -4,10 +4,10 @@
 
 **Blocked by:** 02: Live In-Process CPU Telemetry & Sparkline, 03: Two-Tier Adaptive Polling & In-Process `libproc` Top Processes
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Per-core Mach tick data is mapped to Apple Silicon Performance and Efficiency core clusters
-- [ ] Popover displays mini per-core utilization bars
-- [ ] SoC temperatures are queried via user-space IOHIDEventSystemClient without root privileges or kernel extensions
-- [ ] Thermals and per-core queries are active only when the popover is open
-- [ ] Unit tests verify core topology partitioning and core load percentage calculations
+- [x] Per-core Mach tick data is mapped to Apple Silicon Performance and Efficiency core clusters
+- [x] Popover displays mini per-core utilization bars
+- [x] SoC temperatures are queried via user-space IOHIDEventSystemClient without root privileges or kernel extensions
+- [x] Thermals and per-core queries are active only when the popover is open
+- [x] Unit tests verify core topology partitioning and core load percentage calculations
