@@ -11,13 +11,17 @@ struct TelemetryCoordinatorTests {
         let expectedCPU = CPUStats(usageFraction: 0.45)
         let expectedMem = MemoryStats(usedBytes: 8_000_000_000, totalBytes: 16_000_000_000, pressure: .normal)
         let expectedNet = NetworkStats(uploadBytesPerSecond: 1024, downloadBytesPerSecond: 2048)
+        let expectedDisk = DiskStats(totalBytes: 500_000_000_000, freeBytes: 300_000_000_000, usedBytes: 200_000_000_000, readBytesPerSecond: 5000, writeBytesPerSecond: 10000)
+        let expectedBattery = BatteryStats(capacityFraction: 0.85, isCharging: true, isACPower: true, timeRemainingMinutes: 45)
 
-        let mock = MockTelemetryProvider(cpu: expectedCPU, memory: expectedMem, network: expectedNet)
+        let mock = MockTelemetryProvider(cpu: expectedCPU, memory: expectedMem, network: expectedNet, disk: expectedDisk, battery: expectedBattery)
         let coordinator = TelemetryCoordinator(provider: mock, autoStart: false)
 
         #expect(mock.cpuSampleCount == 0)
         #expect(mock.memorySampleCount == 0)
         #expect(mock.networkSampleCount == 0)
+        #expect(mock.diskSampleCount == 0)
+        #expect(mock.batterySampleCount == 0)
 
         coordinator.tick()
 
@@ -26,7 +30,11 @@ struct TelemetryCoordinatorTests {
         #expect(mock.cpuSampleCount == 1)
         #expect(mock.memorySampleCount == 1)
         #expect(mock.networkSampleCount == 1)
+        #expect(mock.diskSampleCount == 1)
+        #expect(mock.batterySampleCount == 1)
         #expect(coordinator.currentCPU == expectedCPU)
+        #expect(coordinator.currentDisk == expectedDisk)
+        #expect(coordinator.currentBattery == expectedBattery)
         #expect(coordinator.cpuHistory == [0.45])
     }
 

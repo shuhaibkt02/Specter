@@ -40,4 +40,22 @@ struct ModelTests {
         #expect(NetworkStats.formatRate(2048) == "2 KB/s")
         #expect(NetworkStats.formatRate(1_572_864) == "1.5 MB/s")
     }
+
+    @Test("DiskStats calculates usage fraction and formats gigabytes and MB/s")
+    func testDiskStatsModel() {
+        let stats = DiskStats(
+            totalBytes: 1_073_741_824_000, // 1000 GB
+            freeBytes: 268_435_456_000,   // 250 GB
+            usedBytes: 805_306_368_000,   // 750 GB
+            readBytesPerSecond: 10_485_760.0, // 10.0 MB/s
+            writeBytesPerSecond: 5_242_880.0  // 5.0 MB/s
+        )
+        #expect(stats.usedFraction == 0.75)
+        #expect(stats.percentageString == "75%")
+        #expect(stats.formattedTotalGB == "1000.0 GB")
+        #expect(stats.formattedFreeGB == "250.0 GB")
+        #expect(stats.formattedUsedGB == "750.0 GB")
+        #expect(stats.formattedReadMBs == "10.0 MB/s")
+        #expect(stats.formattedWriteMBs == "5.0 MB/s")
+    }
 }

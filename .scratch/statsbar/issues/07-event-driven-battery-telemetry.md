@@ -4,11 +4,11 @@
 
 **Blocked by:** 01: Project Foundation, Sandboxed Menu Bar Pill & Telemetry Seam
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Power source information is read via IOKit Power Sources API
-- [ ] Run-loop observer source triggers updates only when battery state changes (0% idle polling CPU)
-- [ ] Charge percentage, charging state, and time remaining are extracted
-- [ ] Popover card displays clean battery gauge and power status
-- [ ] Optional compact battery glyph rendered in the menu bar pill
-- [ ] Unit tests verify power source dictionary parsing and time-remaining formatting
+- [x] Power source information is read via IOKit Power Sources API
+- [x] Run-loop observer source triggers updates only when battery state changes (0% idle polling CPU)
+- [x] Charge percentage, charging state, and time remaining are extracted
+- [x] Popover card displays clean battery gauge and power status
+- [x] Optional compact battery glyph rendered in the menu bar pill
+- [x] Unit tests verify power source dictionary parsing and time-remaining formatting

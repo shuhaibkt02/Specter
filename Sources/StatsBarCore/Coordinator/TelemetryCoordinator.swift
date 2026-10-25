@@ -9,6 +9,8 @@ public final class TelemetryCoordinator {
     public var cpuHistory: [Double] = []
     public var currentMemory: MemoryStats = MemoryStats()
     public var currentNetwork: NetworkStats = NetworkStats()
+    public var currentDisk: DiskStats = DiskStats()
+    public var currentBattery: BatteryStats = BatteryStats()
     public var topProcesses: [ProcessSnapshot] = []
     
     /// Controls two-tier adaptive polling.
@@ -50,6 +52,8 @@ public final class TelemetryCoordinator {
             let cpu = provider.sampleCPU()
             let memory = provider.sampleMemory()
             let network = provider.sampleNetwork()
+            let disk = provider.sampleDisk()
+            let battery = provider.sampleBattery()
             let procs = isPresented ? provider.sampleTopProcesses(limit: 5) : []
 
             Task { @MainActor [weak self] in
@@ -61,6 +65,8 @@ public final class TelemetryCoordinator {
                 }
                 self.currentMemory = memory
                 self.currentNetwork = network
+                self.currentDisk = disk
+                self.currentBattery = battery
                 if isPresented {
                     self.topProcesses = procs
                 }

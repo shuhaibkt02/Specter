@@ -4,11 +4,11 @@
 
 **Blocked by:** 01: Project Foundation, Sandboxed Menu Bar Pill & Telemetry Seam
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Network byte counters (`ifi_ibytes`, `ifi_obytes`) are read via BSD `sysctl` routing messages
-- [ ] Active physical interface (e.g. `en0`) is dynamically resolved, avoiding virtual VPN `utun` adapters
-- [ ] Upload and download speeds are derived from byte deltas divided by elapsed time
-- [ ] Menu bar pill formats speeds with fixed monospaced units (B/s, KB/s, MB/s) with zero jitter
-- [ ] Popover card displays live network transfer rates and local IP address
-- [ ] Unit tests verify rate derivation, handling of initial ticks, and network interface transitions
+- [x] Network byte counters (`ifi_ibytes`, `ifi_obytes`) are read via BSD `sysctl` routing messages
+- [x] Active physical interface (e.g. `en0`) is dynamically resolved, avoiding virtual VPN `utun` adapters
+- [x] Upload and download speeds are derived from byte deltas divided by elapsed time
+- [x] Menu bar pill formats speeds with fixed monospaced units (B/s, KB/s, MB/s) with zero jitter
+- [x] Popover card displays live network transfer rates and local IP address
+- [x] Unit tests verify rate derivation, handling of initial ticks, and network interface transitions

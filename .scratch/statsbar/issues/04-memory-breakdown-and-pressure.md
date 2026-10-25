@@ -4,11 +4,11 @@
 
 **Blocked by:** 01: Project Foundation, Sandboxed Menu Bar Pill & Telemetry Seam
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Virtual memory page statistics are retrieved via Mach VM host statistics
-- [ ] Memory pressure level is queried via BSD sysctl and categorized into Normal (Green), Warning (Yellow), and Critical (Red)
-- [ ] Swap usage (total, used, free) is queried via BSD sysctl
-- [ ] Popover dashboard displays a memory card breakdown with clear category bars
-- [ ] Menu bar pill optionally shows formatted RAM usage (e.g. `6.4G`)
-- [ ] Unit tests verify memory page multiplication, used memory formulas, and pressure level mapping
+- [x] Virtual memory page statistics are retrieved via Mach VM host statistics
+- [x] Memory pressure level is queried via BSD sysctl and categorized into Normal (Green), Warning (Yellow), and Critical (Red)
+- [x] Swap usage (total, used, free) is queried via BSD sysctl
+- [x] Popover dashboard displays a memory card breakdown with clear category bars
+- [x] Menu bar pill optionally shows formatted RAM usage (e.g. `6.4G`)
+- [x] Unit tests verify memory page multiplication, used memory formulas, and pressure level mapping

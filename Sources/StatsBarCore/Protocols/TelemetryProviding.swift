@@ -5,6 +5,8 @@ public protocol TelemetryProviding: Sendable {
     func sampleCPU() -> CPUStats
     func sampleMemory() -> MemoryStats
     func sampleNetwork() -> NetworkStats
+    func sampleDisk() -> DiskStats
+    func sampleBattery() -> BatteryStats
     func sampleTopProcesses(limit: Int) -> [ProcessSnapshot]
 }
 
@@ -13,22 +15,30 @@ public final class MockTelemetryProvider: TelemetryProviding, @unchecked Sendabl
     public var cpuToReturn: CPUStats
     public var memoryToReturn: MemoryStats
     public var networkToReturn: NetworkStats
+    public var diskToReturn: DiskStats
+    public var batteryToReturn: BatteryStats
     public var processesToReturn: [ProcessSnapshot]
     
     public private(set) var cpuSampleCount: Int = 0
     public private(set) var memorySampleCount: Int = 0
     public private(set) var networkSampleCount: Int = 0
+    public private(set) var diskSampleCount: Int = 0
+    public private(set) var batterySampleCount: Int = 0
     public private(set) var processSampleCount: Int = 0
 
     public init(
         cpu: CPUStats = CPUStats(),
         memory: MemoryStats = MemoryStats(),
         network: NetworkStats = NetworkStats(),
+        disk: DiskStats = DiskStats(),
+        battery: BatteryStats = BatteryStats(),
         processes: [ProcessSnapshot] = []
     ) {
         self.cpuToReturn = cpu
         self.memoryToReturn = memory
         self.networkToReturn = network
+        self.diskToReturn = disk
+        self.batteryToReturn = battery
         self.processesToReturn = processes
     }
 
@@ -45,6 +55,16 @@ public final class MockTelemetryProvider: TelemetryProviding, @unchecked Sendabl
     public func sampleNetwork() -> NetworkStats {
         networkSampleCount += 1
         return networkToReturn
+    }
+
+    public func sampleDisk() -> DiskStats {
+        diskSampleCount += 1
+        return diskToReturn
+    }
+
+    public func sampleBattery() -> BatteryStats {
+        batterySampleCount += 1
+        return batteryToReturn
     }
 
     public func sampleTopProcesses(limit: Int) -> [ProcessSnapshot] {

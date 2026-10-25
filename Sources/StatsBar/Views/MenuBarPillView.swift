@@ -18,6 +18,10 @@ public struct MenuBarPillView: View {
                 .foregroundStyle(.secondary)
             Text("R: \(coordinator.currentMemory.formattedUsedGB)")
                 .monospacedDigit()
+            Text("•")
+                .foregroundStyle(.secondary)
+            Text("↓\(coordinator.currentNetwork.formattedDownload)")
+                .monospacedDigit()
         }
         .font(.system(size: 11, weight: .medium, design: .default))
     }
