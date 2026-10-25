@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "StatsBar",
     platforms: [
-        .macOS(.v14)
+        .macOS("26.0")
     ],
     products: [
         .library(name: "StatsBarCore", targets: ["StatsBarCore"]),
