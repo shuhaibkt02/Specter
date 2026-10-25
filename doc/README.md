@@ -43,3 +43,7 @@ This folder documents the analysis and reverse-engineering of [exelban/stats](ht
    * The 6 technical pillars to make the monitor ultra-lightweight and objectively better than `Stats`.
    * Timer coalescing, two-tier adaptive polling (closed vs open popover), in-process `libproc` vs subprocess forks, and zero-SSD-wear ring buffers.
    * Side-by-side performance, memory, and energy comparison matrix.
+
+7. **[Specification (SPEC.md)](SPEC.md)**
+   * Comprehensive functional and technical specification for the custom monitor.
+   * Problem statement, solution, extensive user stories (30 stories), implementation decisions, testing seams, and out-of-scope declarations.
