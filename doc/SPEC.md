@@ -89,10 +89,15 @@ A native, sandboxed Apple Silicon macOS menu bar application built with modern S
 * Ring buffers hold a maximum of 30 to 60 floating-point numbers.
 * Zero data is persisted to disk, avoiding LevelDB or SQLite dependencies and eliminating SSD write cycles.
 
-### 5. UI Presentation & Layout Stability
-* The menu bar item is rendered as a single consolidated pill.
-* All dynamic numeric elements are formatted with fixed tabular numbers (`.monospacedDigit()`) and consistent unit scales to eliminate layout jitter.
-* The popover dashboard is organized into clean, dedicated cards (CPU, Memory, Network, Disk, Battery).
+### 5. UI Presentation & Layout Stability (Detailed in [07. UI/UX Design Direction](07-ui-ux-design-and-laws.md))
+* **Menu Bar Pill**: Rendered as a single consolidated `NSStatusItem` pill with 3 default segments (CPU, Memory, Network). Fixed segment width reservation computed at launch from worst-case localized strings eliminates horizontal layout jitter. Numbers use SF Mono / SF Pro `.monospacedDigit()`.
+* **Zero Color at Rest**: Template tint (`.primary`) for idle telemetry. Color (amber/red) is strictly reserved as an exception for critical/warning states (Von Restorff effect).
+* **The Popover Cockpit**: Fixed 320pt width, native `.regularMaterial` / `.thickMaterial`, 5 structured cards (CPU, Memory, Network, Disk, Battery) following an identical 5-slot composition (title, live value, sparkline, breakdown, top processes).
+* **Zero-Reflow Tier-2 Escalation**: Skeleton rows for per-core bars and process lists are pre-allocated with 0 opacity and fade in (150ms ease-out) so the popover geometry never pops or shifts.
+* **Sparklines**: Single continuous 1px `Path` rendered from `RingBuffer<Float>` (60s history), crossfading only the newest point (200ms) with zero whole-graph shifting.
+* **Process Termination Guard**: Hover-revealed 20×20pt `✕` affordance with single-tap inline confirmation to prevent accidental SIGTERM actions.
+* **Anti-Settings Panel**: Opinionated 5-control panel (segments selection, interval, temperature unit, launch-at-login, per-core toggle).
+* **Accessibility**: Full VoiceOver integration reading complete semantic descriptions and pressure levels. Honors Increase Contrast and Reduce Transparency.
 
 ### 6. Sandbox & Security Configuration
 * Configured with strict App Sandbox.

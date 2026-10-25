@@ -6,15 +6,15 @@ struct ModelTests {
 
     @Test("CPUStats clamps negative and excessive usage fractions")
     func testCPUStatsClamping() {
-        let negative = CPUStats(usageFraction: -0.5, logicalCoreCount: 8)
+        let negative = CPUStats(usageFraction: -0.5)
         #expect(negative.usageFraction == 0.0)
         #expect(negative.percentageString == "0%")
 
-        let excessive = CPUStats(usageFraction: 1.5, logicalCoreCount: 8)
+        let excessive = CPUStats(usageFraction: 1.5)
         #expect(excessive.usageFraction == 1.0)
         #expect(excessive.percentageString == "100%")
 
-        let normal = CPUStats(usageFraction: 0.354, logicalCoreCount: 8)
+        let normal = CPUStats(usageFraction: 0.354)
         #expect(normal.percentageString == "35%")
     }
 

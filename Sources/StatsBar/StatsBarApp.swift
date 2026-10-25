@@ -30,7 +30,7 @@ struct StatsBarApp: App {
                             .monospacedDigit()
                     }
                     
-                    SparklineView(values: coordinator.cpuHistory.elements)
+                    SparklineView(values: coordinator.cpuHistory)
                         .frame(height: 36)
                         .background(Color.secondary.opacity(0.1))
                         .clipShape(RoundedRectangle(cornerRadius: 4))
@@ -50,6 +50,12 @@ struct StatsBarApp: App {
             }
             .padding()
             .frame(width: 240)
+            .onAppear {
+                coordinator.isPopoverPresented = true
+            }
+            .onDisappear {
+                coordinator.isPopoverPresented = false
+            }
         } label: {
             MenuBarPillView(coordinator: coordinator)
         }

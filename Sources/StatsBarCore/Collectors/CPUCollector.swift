@@ -1,38 +1,29 @@
 import Foundation
 import Darwin
 
-/// Queries live CPU statistics directly from the Mach kernel.
-/// Runs in-process with zero subprocess spawning and sub-millisecond execution time.
+/// Queries live CPU statistics directly from the Mach kernel in-process.
 public final class CPUCollector: @unchecked Sendable {
     private var previousTicks: host_cpu_load_info?
-    private let lock = NSLock()
-    public let logicalCoreCount: Int
 
-    public init(logicalCoreCount: Int = ProcessInfo.processInfo.activeProcessorCount) {
-        self.logicalCoreCount = max(logicalCoreCount, 1)
-    }
+    public init() {}
 
     /// Samples aggregate CPU ticks and calculates utilization since the last sample.
     public func sample() -> CPUStats {
-        lock.lock()
-        defer { lock.unlock() }
-
         guard let currentTicks = Self.readHostCPULoadInfo() else {
-            return CPUStats(usageFraction: 0.0, logicalCoreCount: logicalCoreCount)
+            return CPUStats(usageFraction: 0.0)
         }
 
         guard let prev = previousTicks else {
-            // First tick baseline: store and return 0.0 until second tick establishes delta
             previousTicks = currentTicks
-            return CPUStats(usageFraction: 0.0, logicalCoreCount: logicalCoreCount)
+            return CPUStats(usageFraction: 0.0)
         }
 
         previousTicks = currentTicks
         let usage = Self.calculateUsage(previous: prev, current: currentTicks)
-        return CPUStats(usageFraction: usage, logicalCoreCount: logicalCoreCount)
+        return CPUStats(usageFraction: usage)
     }
 
-    /// Pure function calculating CPU usage fraction from tick state transitions.
+    /// Calculates CPU usage fraction from tick state transitions.
     public static func calculateUsage(previous: host_cpu_load_info, current: host_cpu_load_info) -> Double {
         let userDiff   = Double(current.cpu_ticks.0 &- previous.cpu_ticks.0)
         let sysDiff    = Double(current.cpu_ticks.1 &- previous.cpu_ticks.1)

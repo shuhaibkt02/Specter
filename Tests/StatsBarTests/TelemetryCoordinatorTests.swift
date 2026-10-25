@@ -3,11 +3,12 @@ import Foundation
 import StatsBarCore
 
 @Suite("TelemetryCoordinator Tests")
+@MainActor
 struct TelemetryCoordinatorTests {
 
     @Test("Coordinator ticks invoke telemetry provider")
-    func testCoordinatorTick() async {
-        let expectedCPU = CPUStats(usageFraction: 0.45, logicalCoreCount: 10)
+    func testCoordinatorTick() async throws {
+        let expectedCPU = CPUStats(usageFraction: 0.45)
         let expectedMem = MemoryStats(usedBytes: 8_000_000_000, totalBytes: 16_000_000_000, pressure: .normal)
         let expectedNet = NetworkStats(uploadBytesPerSecond: 1024, downloadBytesPerSecond: 2048)
 
@@ -20,9 +21,14 @@ struct TelemetryCoordinatorTests {
 
         coordinator.tick()
 
+        // Allow background queue tick to complete
+        try await Task.sleep(nanoseconds: 50_000_000)
+
         #expect(mock.cpuSampleCount == 1)
         #expect(mock.memorySampleCount == 1)
         #expect(mock.networkSampleCount == 1)
+        #expect(coordinator.currentCPU == expectedCPU)
+        #expect(coordinator.cpuHistory == [0.45])
     }
 
     @Test("Popover presentation adapts sampling interval between Tier 1 and Tier 2")

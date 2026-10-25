@@ -6,9 +6,9 @@
 
 **Status:** ready-for-agent
 
-- [ ] Popover includes an intuitive settings view
-- [ ] User can toggle visibility of individual pill components (e.g. show/hide CPU %, RAM, Network speeds)
-- [ ] User can select background polling interval (e.g. 1s, 2s, 3s)
+- [ ] Popover includes an intuitive settings view (strict 5-control anti-settings panel per Doc 07)
+- [ ] User can reorder and toggle visibility of individual pill segments (CPU, Mem, Net default)
+- [ ] User can select background polling interval (1s, 2s, 3s; default 2s)
 - [ ] Preferences persist across application launches using `UserDefaults`
-- [ ] Menu bar pill updates layout reactively when settings are modified
+- [ ] Menu bar pill updates layout reactively with zero-jitter fixed reserved widths
 - [ ] Unit tests verify preference serialization, deserialization, and reactive state publication

@@ -44,7 +44,13 @@ This folder documents the analysis and reverse-engineering of [exelban/stats](ht
    * Timer coalescing, two-tier adaptive polling (closed vs open popover), in-process `libproc` vs subprocess forks, and zero-SSD-wear ring buffers.
    * Side-by-side performance, memory, and energy comparison matrix.
 
-7. **[Specification (SPEC.md)](SPEC.md)**
+7. **[07. UI/UX Design Direction & Applied Cognitive Laws](07-ui-ux-design-and-laws.md)**
+   * Staff-level product and visual design brief for StatsBar.
+   * The design thesis: "Silence by default, stability is legibility, the popover is a cockpit."
+   * Information architecture for the jitter-free menu bar pill, the 5-card popover cockpit, and the 5-control anti-settings panel.
+   * Exhaustive application of Gestalt perception, cognitive memory, action/decision laws, Nielsen's 10 heuristics, steel-manned trade-offs, conflict resolution matrix, and an engineering handoff checklist.
+
+8. **[Specification (SPEC.md)](SPEC.md)**
    * Comprehensive functional and technical specification for the custom monitor.
    * Problem statement, solution, extensive user stories (30 stories), implementation decisions, testing seams, and out-of-scope declarations.
 
