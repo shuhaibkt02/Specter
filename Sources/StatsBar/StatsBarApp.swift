@@ -40,6 +40,28 @@ struct StatsBarApp: App {
 
                 Text("Memory: \(coordinator.currentMemory.formattedUsedGB)")
                     .monospacedDigit()
+
+                if !coordinator.topProcesses.isEmpty {
+                    Divider()
+                    Text("Top Processes (CPU)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    VStack(spacing: 4) {
+                        ForEach(coordinator.topProcesses) { proc in
+                            HStack {
+                                Text(proc.name)
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
+                                Spacer()
+                                Text(proc.percentageString)
+                                    .monospacedDigit()
+                                    .foregroundStyle(.secondary)
+                            }
+                            .font(.caption)
+                        }
+                    }
+                }
                 
                 Divider()
 

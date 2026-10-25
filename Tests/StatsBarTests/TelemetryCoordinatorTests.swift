@@ -21,7 +21,6 @@ struct TelemetryCoordinatorTests {
 
         coordinator.tick()
 
-        // Allow background queue tick to complete
         try await Task.sleep(nanoseconds: 50_000_000)
 
         #expect(mock.cpuSampleCount == 1)
@@ -29,6 +28,33 @@ struct TelemetryCoordinatorTests {
         #expect(mock.networkSampleCount == 1)
         #expect(coordinator.currentCPU == expectedCPU)
         #expect(coordinator.cpuHistory == [0.45])
+    }
+
+    @Test("Two-tier polling completely suspends process polling when popover is closed")
+    func testTwoTierProcessSuspension() async throws {
+        let sampleProcesses = [
+            ProcessSnapshot(id: 100, name: "WindowServer", cpuFraction: 0.12),
+            ProcessSnapshot(id: 101, name: "Xcode", cpuFraction: 0.25)
+        ]
+        let mock = MockTelemetryProvider(processes: sampleProcesses)
+        let coordinator = TelemetryCoordinator(provider: mock, autoStart: false)
+
+        // Popover closed (Tier 1: Background mode)
+        coordinator.isPopoverPresented = false
+        coordinator.tick()
+        try await Task.sleep(nanoseconds: 50_000_000)
+
+        // Process collector must NEVER be called while popover is closed!
+        #expect(mock.processSampleCount == 0)
+        #expect(coordinator.topProcesses.isEmpty)
+
+        // Popover opened (Tier 2: Active dashboard mode)
+        coordinator.isPopoverPresented = true
+        try await Task.sleep(nanoseconds: 50_000_000)
+
+        // Process collector must now be invoked and state published
+        #expect(mock.processSampleCount == 1)
+        #expect(coordinator.topProcesses == sampleProcesses)
     }
 
     @Test("Popover presentation adapts sampling interval between Tier 1 and Tier 2")

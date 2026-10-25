@@ -9,11 +9,15 @@ public final class TelemetryCoordinator {
     public var cpuHistory: [Double] = []
     public var currentMemory: MemoryStats = MemoryStats()
     public var currentNetwork: NetworkStats = NetworkStats()
+    public var topProcesses: [ProcessSnapshot] = []
     
     /// Controls two-tier adaptive polling.
     public var isPopoverPresented: Bool = false {
         didSet {
             samplingInterval = isPopoverPresented ? 1.0 : 2.0
+            if isPopoverPresented {
+                tick()
+            }
         }
     }
 
@@ -40,11 +44,13 @@ public final class TelemetryCoordinator {
 
     /// Single master tick: samples telemetry and publishes to the MainActor.
     public func tick() {
+        let isPresented = self.isPopoverPresented
         let provider = self.provider
         queue.async { [weak self] in
             let cpu = provider.sampleCPU()
             let memory = provider.sampleMemory()
             let network = provider.sampleNetwork()
+            let procs = isPresented ? provider.sampleTopProcesses(limit: 5) : []
 
             Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -55,6 +61,9 @@ public final class TelemetryCoordinator {
                 }
                 self.currentMemory = memory
                 self.currentNetwork = network
+                if isPresented {
+                    self.topProcesses = procs
+                }
             }
         }
     }
@@ -80,6 +89,7 @@ public final class TelemetryCoordinator {
     }
 
     private func restartTimer() {
+        guard timer != nil else { return }
         stopTimer()
         startTimer()
     }
