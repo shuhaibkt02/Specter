@@ -1,0 +1,45 @@
+import Foundation
+
+/// Primary testing seam: abstract interface through which the coordinator samples hardware metrics.
+/// Enables 100% deterministic unit testing without depending on live kernel state.
+public protocol TelemetryProviding: Sendable {
+    func sampleCPU() -> CPUStats
+    func sampleMemory() -> MemoryStats
+    func sampleNetwork() -> NetworkStats
+}
+
+/// A synthetic telemetry provider used in unit tests to inject deterministic data.
+public final class MockTelemetryProvider: TelemetryProviding, @unchecked Sendable {
+    public var cpuToReturn: CPUStats
+    public var memoryToReturn: MemoryStats
+    public var networkToReturn: NetworkStats
+    
+    public private(set) var cpuSampleCount: Int = 0
+    public private(set) var memorySampleCount: Int = 0
+    public private(set) var networkSampleCount: Int = 0
+
+    public init(
+        cpu: CPUStats = CPUStats(),
+        memory: MemoryStats = MemoryStats(),
+        network: NetworkStats = NetworkStats()
+    ) {
+        self.cpuToReturn = cpu
+        self.memoryToReturn = memory
+        self.networkToReturn = network
+    }
+
+    public func sampleCPU() -> CPUStats {
+        cpuSampleCount += 1
+        return cpuToReturn
+    }
+
+    public func sampleMemory() -> MemoryStats {
+        memorySampleCount += 1
+        return memoryToReturn
+    }
+
+    public func sampleNetwork() -> NetworkStats {
+        networkSampleCount += 1
+        return networkToReturn
+    }
+}

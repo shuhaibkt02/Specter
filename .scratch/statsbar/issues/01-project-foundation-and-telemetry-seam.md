@@ -4,10 +4,10 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Application compiles as a native macOS app targeting Apple Silicon macOS 14+
-- [ ] Entitlements enforce an offline App Sandbox without network client entitlements
-- [ ] Single menu bar status item renders cleanly beside the camera notch using monospaced digits
-- [ ] Central Telemetry Coordinator executes a master timer tick on a background thread
-- [ ] High-level Telemetry Provider seam is in place and verified by automated unit tests with synthetic data
+- [x] Application compiles as a native macOS app targeting Apple Silicon macOS 14+
+- [x] Entitlements enforce an offline App Sandbox without network client entitlements
+- [x] Single menu bar status item renders cleanly beside the camera notch using monospaced digits
+- [x] Central Telemetry Coordinator executes a master timer tick on a background thread
+- [x] High-level Telemetry Provider seam is in place and verified by automated unit tests with synthetic data
