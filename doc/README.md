@@ -38,3 +38,8 @@ This folder documents the analysis and reverse-engineering of [exelban/stats](ht
    * Deep-dive into CVE-2025-21606 / GHSA-qwhf-px96-7f6v (Local Privilege Escalation via XPC root helper daemon).
    * Common operational bugs from GitHub Issues: menu bar width jitter, camera notch overcrowding, NotificationCenter 50% CPU render loops, memory/port leaks, and VPN bandwidth doubling.
    * Direct UI/UX critiques and improvements for our personal custom monitor.
+
+6. **[06. Ultra-Lightweight Engineering Strategy](06-ultra-lightweight-engineering-strategy.md)**
+   * The 6 technical pillars to make the monitor ultra-lightweight and objectively better than `Stats`.
+   * Timer coalescing, two-tier adaptive polling (closed vs open popover), in-process `libproc` vs subprocess forks, and zero-SSD-wear ring buffers.
+   * Side-by-side performance, memory, and energy comparison matrix.
