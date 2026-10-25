@@ -37,7 +37,7 @@ public final class NetworkCollector: @unchecked Sendable {
             lock.withLock {
                 previousSample = nil
             }
-            return NetworkStats(uploadBytesPerSecond: 0.0, downloadBytesPerSecond: 0.0)
+            return NetworkStats(uploadBytesPerSecond: 0.0, downloadBytesPerSecond: 0.0, interfaceName: interfaceName)
         }
 
         let now = DispatchTime.now().uptimeNanoseconds
@@ -50,7 +50,7 @@ public final class NetworkCollector: @unchecked Sendable {
                     outBytes: outBytes,
                     timestampNanos: now
                 )
-                return NetworkStats(uploadBytesPerSecond: 0.0, downloadBytesPerSecond: 0.0)
+                return NetworkStats(uploadBytesPerSecond: 0.0, downloadBytesPerSecond: 0.0, interfaceName: interfaceName)
             }
 
             previousSample = PreviousSample(
@@ -62,7 +62,8 @@ public final class NetworkCollector: @unchecked Sendable {
 
             return Self.calculateRates(
                 previous: (inBytes: prev.inBytes, outBytes: prev.outBytes, timestampNanos: prev.timestampNanos),
-                current: (inBytes: inBytes, outBytes: outBytes, timestampNanos: now)
+                current: (inBytes: inBytes, outBytes: outBytes, timestampNanos: now),
+                interfaceName: interfaceName
             )
         }
     }
@@ -78,17 +79,18 @@ public final class NetworkCollector: @unchecked Sendable {
     /// Handles wrapping subtraction (`&-`) and non-positive elapsed time.
     public static func calculateRates(
         previous: (inBytes: UInt64, outBytes: UInt64, timestampNanos: UInt64),
-        current: (inBytes: UInt64, outBytes: UInt64, timestampNanos: UInt64)
+        current: (inBytes: UInt64, outBytes: UInt64, timestampNanos: UInt64),
+        interfaceName: String = "en0"
     ) -> NetworkStats {
         guard current.timestampNanos > previous.timestampNanos else {
-            return NetworkStats(uploadBytesPerSecond: 0.0, downloadBytesPerSecond: 0.0)
+            return NetworkStats(uploadBytesPerSecond: 0.0, downloadBytesPerSecond: 0.0, interfaceName: interfaceName)
         }
 
         let timeDeltaNanos = current.timestampNanos - previous.timestampNanos
         let elapsedSeconds = Double(timeDeltaNanos) / 1_000_000_000.0
 
         guard elapsedSeconds > 0 else {
-            return NetworkStats(uploadBytesPerSecond: 0.0, downloadBytesPerSecond: 0.0)
+            return NetworkStats(uploadBytesPerSecond: 0.0, downloadBytesPerSecond: 0.0, interfaceName: interfaceName)
         }
 
         let inDelta = current.inBytes &- previous.inBytes
@@ -99,7 +101,8 @@ public final class NetworkCollector: @unchecked Sendable {
 
         return NetworkStats(
             uploadBytesPerSecond: (uploadRate.isFinite && uploadRate >= 0) ? uploadRate : 0.0,
-            downloadBytesPerSecond: (downloadRate.isFinite && downloadRate >= 0) ? downloadRate : 0.0
+            downloadBytesPerSecond: (downloadRate.isFinite && downloadRate >= 0) ? downloadRate : 0.0,
+            interfaceName: interfaceName
         )
     }
 

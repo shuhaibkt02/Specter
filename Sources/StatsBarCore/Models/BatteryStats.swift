@@ -14,6 +14,10 @@ public struct BatteryStats: Sendable, Equatable {
     public let percentageString: String
     /// Whether the device has a physical internal battery (false on desktops like Mac mini, Mac Studio, Mac Pro).
     public let hasBattery: Bool
+    /// Maximum capacity health percentage (e.g. 98%).
+    public let healthPercentage: Int?
+    /// Battery health condition string (e.g. "Normal", "Service Battery").
+    public let condition: String?
 
     public init(
         capacityFraction: Double = 0.0,
@@ -21,7 +25,9 @@ public struct BatteryStats: Sendable, Equatable {
         isACPower: Bool = true,
         timeRemainingMinutes: Int? = nil,
         percentageString: String? = nil,
-        hasBattery: Bool = true
+        hasBattery: Bool = true,
+        healthPercentage: Int? = 100,
+        condition: String? = "Normal"
     ) {
         let clamped = min(max(capacityFraction, 0.0), 1.0)
         self.capacityFraction = clamped
@@ -30,6 +36,23 @@ public struct BatteryStats: Sendable, Equatable {
         self.timeRemainingMinutes = timeRemainingMinutes
         self.percentageString = percentageString ?? "\(Int((clamped * 100).rounded()))%"
         self.hasBattery = hasBattery
+        self.healthPercentage = hasBattery ? healthPercentage : nil
+        self.condition = hasBattery ? condition : nil
+    }
+
+    /// User-friendly charging and power status description ("On AC Power", "Discharging", "Charged", or "Charging").
+    public var chargingStatusDescription: String {
+        guard hasBattery else { return "On AC Power" }
+        if isCharging {
+            return "Charging"
+        } else if isACPower {
+            if capacityFraction >= 0.99 {
+                return "Charged"
+            }
+            return "On AC Power"
+        } else {
+            return "Discharging"
+        }
     }
 
     /// Formatted human-readable time remaining string (e.g. "2h 30m", "45m", or nil if calculating/unavailable).

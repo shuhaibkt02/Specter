@@ -8,7 +8,9 @@ public final class TelemetryCoordinator {
     public var currentCPU: CPUStats = CPUStats()
     public var cpuHistory: [Double] = []
     public var currentMemory: MemoryStats = MemoryStats()
+    public var memoryHistory: [Double] = []
     public var currentNetwork: NetworkStats = NetworkStats()
+    public var networkHistory: [Double] = []
     public var currentDisk: DiskStats = DiskStats()
     public var currentBattery: BatteryStats = BatteryStats()
     public var currentAppleSilicon: AppleSiliconStats = AppleSiliconStats()
@@ -76,7 +78,17 @@ public final class TelemetryCoordinator {
                     self.cpuHistory.removeFirst()
                 }
                 self.currentMemory = memory
+                self.memoryHistory.append(memory.usedFraction)
+                if self.memoryHistory.count > 30 {
+                    self.memoryHistory.removeFirst()
+                }
                 self.currentNetwork = network
+                let maxRef = max(network.downloadBytesPerSecond, 1_048_576.0)
+                let netFraction = min(max(network.downloadBytesPerSecond / maxRef, 0.0), 1.0)
+                self.networkHistory.append(netFraction)
+                if self.networkHistory.count > 30 {
+                    self.networkHistory.removeFirst()
+                }
                 self.currentDisk = disk
                 self.currentBattery = battery
                 if isPresented {

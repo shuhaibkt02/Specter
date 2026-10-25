@@ -249,6 +249,8 @@ public final class BatteryCollector: @unchecked Sendable {
         }
 
         let explicitPercentage = description["percentageString"] as? String
+        let healthPercentage = parseInt(description["healthPercentage"]) ?? parseInt(description["batteryHealth"]) ?? 100
+        let condition = (description["condition"] as? String) ?? "Normal"
 
         return BatteryStats(
             capacityFraction: capacityFraction,
@@ -256,7 +258,9 @@ public final class BatteryCollector: @unchecked Sendable {
             isACPower: isACPower,
             timeRemainingMinutes: timeRemainingMinutes,
             percentageString: explicitPercentage,
-            hasBattery: true
+            hasBattery: true,
+            healthPercentage: healthPercentage,
+            condition: condition
         )
     }
 

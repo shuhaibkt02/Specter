@@ -116,15 +116,44 @@ public struct MemoryStats: Sendable, Equatable {
         return min(max(Double(usedBytes) / Double(totalBytes), 0.0), 1.0)
     }
 
+    /// Formats raw bytes to gigabytes string (e.g. "8.2 GB").
+    public static func formatGigabytes(_ bytes: UInt64) -> String {
+        let gb = Double(bytes) / 1_073_741_824.0
+        return String(format: "%.1f GB", gb)
+    }
+
+    /// Total cached memory (purgeable + external file cache).
+    public var cachedBytes: UInt64 {
+        purgeableBytes + externalBytes
+    }
+
     /// Formatted gigabyte string (e.g. "8.2 GB").
     public var formattedUsedGB: String {
-        let gb = Double(usedBytes) / 1_073_741_824.0
-        return String(format: "%.1f GB", gb)
+        Self.formatGigabytes(usedBytes)
     }
 
     /// Formatted total physical RAM string (e.g. "16.0 GB").
     public var formattedTotalGB: String {
-        let gb = Double(totalBytes) / 1_073_741_824.0
-        return String(format: "%.1f GB", gb)
+        Self.formatGigabytes(totalBytes)
+    }
+
+    /// Formatted wired memory in gigabytes.
+    public var formattedWiredGB: String {
+        Self.formatGigabytes(wiredBytes)
+    }
+
+    /// Formatted active memory in gigabytes.
+    public var formattedActiveGB: String {
+        Self.formatGigabytes(activeBytes)
+    }
+
+    /// Formatted compressed memory in gigabytes.
+    public var formattedCompressedGB: String {
+        Self.formatGigabytes(compressedBytes)
+    }
+
+    /// Formatted cached memory in gigabytes.
+    public var formattedCachedGB: String {
+        Self.formatGigabytes(cachedBytes)
     }
 }
