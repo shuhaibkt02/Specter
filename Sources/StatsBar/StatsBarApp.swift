@@ -7,11 +7,8 @@ struct StatsBarApp: App {
     @State private var coordinator: TelemetryCoordinator
 
     init() {
-        // Ticket 01 uses MockTelemetryProvider as the high-level seam baseline.
-        // Subsequent tickets will wire up the live in-process collectors.
-        let initialCPU = CPUStats(usageFraction: 0.12, logicalCoreCount: 10)
-        let initialMemory = MemoryStats(usedBytes: 6_871_947_673, totalBytes: 17_179_869_184, pressure: .normal)
-        let provider = MockTelemetryProvider(cpu: initialCPU, memory: initialMemory)
+        // Uses production SystemTelemetryProvider with live Mach CPUCollector
+        let provider = SystemTelemetryProvider()
         _coordinator = State(initialValue: TelemetryCoordinator(provider: provider))
     }
 
@@ -23,8 +20,24 @@ struct StatsBarApp: App {
                 
                 Divider()
 
-                Text("CPU: \(coordinator.currentCPU.percentageString)")
-                    .monospacedDigit()
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("CPU Usage:")
+                            .font(.subheadline)
+                        Spacer()
+                        Text(coordinator.currentCPU.percentageString)
+                            .font(.subheadline)
+                            .monospacedDigit()
+                    }
+                    
+                    SparklineView(values: coordinator.cpuHistory.elements)
+                        .frame(height: 36)
+                        .background(Color.secondary.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                }
+
+                Divider()
+
                 Text("Memory: \(coordinator.currentMemory.formattedUsedGB)")
                     .monospacedDigit()
                 
@@ -36,7 +49,7 @@ struct StatsBarApp: App {
                 .keyboardShortcut("q")
             }
             .padding()
-            .frame(width: 220)
+            .frame(width: 240)
         } label: {
             MenuBarPillView(coordinator: coordinator)
         }
