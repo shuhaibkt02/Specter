@@ -33,3 +33,8 @@ This folder documents the analysis and reverse-engineering of [exelban/stats](ht
    * Direct in-process telemetry via `libproc` and Mach APIs (sub-millisecond overhead).
    * In-memory ring buffers (`RingBuffer<T>`) for zero disk writes.
    * Modern Swift & SwiftUI menu bar implementation plan.
+
+5. **[05. Security Vulnerabilities & Known Issues Analysis](05-security-vulnerabilities-and-repo-issues.md)**
+   * Deep-dive into CVE-2025-21606 / GHSA-qwhf-px96-7f6v (Local Privilege Escalation via XPC root helper daemon).
+   * Common operational bugs from GitHub Issues: menu bar width jitter, camera notch overcrowding, NotificationCenter 50% CPU render loops, memory/port leaks, and VPN bandwidth doubling.
+   * Direct UI/UX critiques and improvements for our personal custom monitor.
