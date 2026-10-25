@@ -47,3 +47,7 @@ This folder documents the analysis and reverse-engineering of [exelban/stats](ht
 7. **[Specification (SPEC.md)](SPEC.md)**
    * Comprehensive functional and technical specification for the custom monitor.
    * Problem statement, solution, extensive user stories (30 stories), implementation decisions, testing seams, and out-of-scope declarations.
+
+8. **[Work Tickets (.scratch/statsbar/issues/)](../.scratch/statsbar/issues/)**
+   * Actionable tracer-bullet work tickets (01 to 09) ready for agent implementation.
+   * Each ticket declares blocking edges, verifiable end-to-end behavior, and acceptance criteria.
