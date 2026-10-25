@@ -13,10 +13,6 @@ struct StatsBarApp: App {
         let provider = SystemTelemetryProvider()
         let settings = SettingsModel.shared
         _coordinator = State(initialValue: TelemetryCoordinator(provider: provider, backgroundInterval: settings.backgroundInterval))
-        print("🟢 StatsBar is running!")
-        print("📍 Look at the top-right macOS menu bar (near the notch/clock) for the telemetry pill.")
-        print("👉 Click the pill to open the cockpit dashboard.")
-        print("🛑 Press Ctrl+C in this terminal or ⌘Q to quit.")
     }
 
     var body: some Scene {

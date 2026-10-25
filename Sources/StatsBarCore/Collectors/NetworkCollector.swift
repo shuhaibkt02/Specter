@@ -32,12 +32,13 @@ public final class NetworkCollector: @unchecked Sendable {
     /// Returns 0.0 B/s on the first sample to establish a baseline.
     public func sample() -> NetworkStats {
         let interfaceName = activeInterfaceName
+        let localIP = Self.resolveLocalIP(forInterface: interfaceName)
         guard let ifIndex = Self.interfaceIndex(forName: interfaceName),
               let (inBytes, outBytes) = Self.readInterfaceBytes(ifIndex: ifIndex) else {
             lock.withLock {
                 previousSample = nil
             }
-            return NetworkStats(uploadBytesPerSecond: 0.0, downloadBytesPerSecond: 0.0, interfaceName: interfaceName)
+            return NetworkStats(uploadBytesPerSecond: 0.0, downloadBytesPerSecond: 0.0, interfaceName: interfaceName, localIP: localIP)
         }
 
         let now = DispatchTime.now().uptimeNanoseconds
@@ -50,7 +51,7 @@ public final class NetworkCollector: @unchecked Sendable {
                     outBytes: outBytes,
                     timestampNanos: now
                 )
-                return NetworkStats(uploadBytesPerSecond: 0.0, downloadBytesPerSecond: 0.0, interfaceName: interfaceName)
+                return NetworkStats(uploadBytesPerSecond: 0.0, downloadBytesPerSecond: 0.0, interfaceName: interfaceName, localIP: localIP)
             }
 
             previousSample = PreviousSample(
@@ -63,34 +64,36 @@ public final class NetworkCollector: @unchecked Sendable {
             return Self.calculateRates(
                 previous: (inBytes: prev.inBytes, outBytes: prev.outBytes, timestampNanos: prev.timestampNanos),
                 current: (inBytes: inBytes, outBytes: outBytes, timestampNanos: now),
-                interfaceName: interfaceName
+                interfaceName: interfaceName,
+                localIP: localIP
             )
         }
     }
 
-    /// Resets the baseline sample so the next sample() call re-establishes baseline.
+    /// Resets previous sample baseline.
     public func reset() {
         lock.withLock {
             previousSample = nil
         }
     }
 
-    /// Calculates upload and download speeds (bytes/sec) between two samples.
+    /// Pure function deriving upload/download rates from consecutive samples.
     /// Handles wrapping subtraction (`&-`) and non-positive elapsed time.
     public static func calculateRates(
         previous: (inBytes: UInt64, outBytes: UInt64, timestampNanos: UInt64),
         current: (inBytes: UInt64, outBytes: UInt64, timestampNanos: UInt64),
-        interfaceName: String = "en0"
+        interfaceName: String = "en0",
+        localIP: String? = nil
     ) -> NetworkStats {
         guard current.timestampNanos > previous.timestampNanos else {
-            return NetworkStats(uploadBytesPerSecond: 0.0, downloadBytesPerSecond: 0.0, interfaceName: interfaceName)
+            return NetworkStats(uploadBytesPerSecond: 0.0, downloadBytesPerSecond: 0.0, interfaceName: interfaceName, localIP: localIP)
         }
 
         let timeDeltaNanos = current.timestampNanos - previous.timestampNanos
         let elapsedSeconds = Double(timeDeltaNanos) / 1_000_000_000.0
 
         guard elapsedSeconds > 0 else {
-            return NetworkStats(uploadBytesPerSecond: 0.0, downloadBytesPerSecond: 0.0, interfaceName: interfaceName)
+            return NetworkStats(uploadBytesPerSecond: 0.0, downloadBytesPerSecond: 0.0, interfaceName: interfaceName, localIP: localIP)
         }
 
         let inDelta = current.inBytes &- previous.inBytes
@@ -102,8 +105,36 @@ public final class NetworkCollector: @unchecked Sendable {
         return NetworkStats(
             uploadBytesPerSecond: (uploadRate.isFinite && uploadRate >= 0) ? uploadRate : 0.0,
             downloadBytesPerSecond: (downloadRate.isFinite && downloadRate >= 0) ? downloadRate : 0.0,
-            interfaceName: interfaceName
+            interfaceName: interfaceName,
+            localIP: localIP
         )
+    }
+
+    /// Resolves the local IPv4 address assigned to a specific interface without network requests.
+    public static func resolveLocalIP(forInterface targetName: String) -> String? {
+        var ifaddrPtr: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&ifaddrPtr) == 0, let first = ifaddrPtr else { return nil }
+        defer { freeifaddrs(ifaddrPtr) }
+
+        for ptr in sequence(first: first, next: { $0.pointee.ifa_next }) {
+            guard let namePtr = ptr.pointee.ifa_name else { continue }
+            let name = String(cString: namePtr)
+            guard name == targetName, let addr = ptr.pointee.ifa_addr else { continue }
+
+            if addr.pointee.sa_family == UInt8(AF_INET) {
+                var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+                let saLen = socklen_t(addr.pointee.sa_len)
+                if getnameinfo(addr, saLen, &hostname, socklen_t(hostname.count), nil, 0, NI_NUMERICHOST) == 0 {
+                    let ip = hostname.withUnsafeBufferPointer { ptr in
+                        ptr.baseAddress.map { String(cString: $0) } ?? ""
+                    }
+                    if !ip.isEmpty && ip != "127.0.0.1" {
+                        return ip
+                    }
+                }
+            }
+        }
+        return nil
     }
 
     /// Resolves the active physical network interface name (e.g. "en0"),
@@ -181,7 +212,14 @@ public final class NetworkCollector: @unchecked Sendable {
     /// Queries BSD routing table via sysctl([CTL_NET, PF_ROUTE, 0, 0, NET_RT_IFLIST2, if_index])
     /// and reads `if_msghdr2` message records (`header2.ifm_data.ifi_ibytes` and `ifi_obytes`).
     public static func readInterfaceBytes(ifIndex: Int32) -> (inBytes: UInt64, outBytes: UInt64)? {
-        var mib: [Int32] = [CTL_NET, PF_ROUTE, 0, 0, NET_RT_IFLIST2, ifIndex]
+        if let direct = queryInterfaceBytes(mibIfIndex: ifIndex, targetIfIndex: ifIndex) {
+            return direct
+        }
+        return queryInterfaceBytes(mibIfIndex: 0, targetIfIndex: ifIndex)
+    }
+
+    private static func queryInterfaceBytes(mibIfIndex: Int32, targetIfIndex: Int32) -> (inBytes: UInt64, outBytes: UInt64)? {
+        var mib: [Int32] = [CTL_NET, PF_ROUTE, 0, 0, NET_RT_IFLIST2, mibIfIndex]
         var length = 0
         guard sysctl(&mib, 6, nil, &length, nil, 0) == 0, length > 0 else {
             return nil
@@ -201,7 +239,7 @@ public final class NetworkCollector: @unchecked Sendable {
 
                 if Int32(msgHdr.ifm_type) == RTM_IFINFO2 && offset + MemoryLayout<if_msghdr2>.size <= length {
                     let header2 = raw.loadUnaligned(fromByteOffset: offset, as: if_msghdr2.self)
-                    if ifIndex == 0 || Int32(header2.ifm_index) == ifIndex {
+                    if targetIfIndex == 0 || Int32(header2.ifm_index) == targetIfIndex {
                         return (inBytes: header2.ifm_data.ifi_ibytes, outBytes: header2.ifm_data.ifi_obytes)
                     }
                 }

@@ -95,7 +95,9 @@ public final class TelemetryCoordinator {
                     if let silicon {
                         self.currentAppleSilicon = silicon
                     }
-                    self.topProcesses = procs
+                    if !procs.isEmpty {
+                        self.topProcesses = procs
+                    }
                 }
             }
         }
@@ -104,7 +106,7 @@ public final class TelemetryCoordinator {
     public func startTimer() {
         guard timer == nil else { return }
         let newTimer = DispatchSource.makeTimerSource(queue: .main)
-        newTimer.schedule(deadline: .now(), repeating: samplingInterval, leeway: .milliseconds(100))
+        newTimer.schedule(deadline: .now(), repeating: samplingInterval, leeway: .milliseconds(500))
         newTimer.setEventHandler { [weak self] in
             self?.tick()
         }

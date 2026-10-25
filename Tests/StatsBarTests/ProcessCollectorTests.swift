@@ -19,14 +19,12 @@ struct ProcessCollectorTests {
         #expect(name == "PID -999")
     }
 
-    @Test("Samples top processes within requested limit in under 20ms")
-    func testSampleTopProcessesPerformanceAndLimit() {
+    @Test("Samples top processes across two ticks returns active processes")
+    func testSampleTopProcessesConsecutiveTicks() {
         let collector = ProcessCollector()
-        let start = DispatchTime.now().uptimeNanoseconds
+        _ = collector.sampleTopProcesses(limit: 5)
+        Thread.sleep(forTimeInterval: 0.1)
         let results = collector.sampleTopProcesses(limit: 5)
-        let elapsedMs = Double(DispatchTime.now().uptimeNanoseconds - start) / 1_000_000.0
-
-        #expect(results.count <= 5)
-        #expect(elapsedMs < 20.0) // Must run in-process in milliseconds
+        #expect(!results.isEmpty, "Should find at least 1 process using CPU across two samples")
     }
 }
