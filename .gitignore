@@ -1,0 +1,16 @@
+# Reference repository
+reference_stats/
+
+# macOS
+.DS_Store
+*.swp
+*~
+
+# Xcode / Swift build artifacts
+build/
+DerivedData/
+.build/
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+*.xcworkspace/*
+!*.xcworkspace/contents.xcworkspacedata
