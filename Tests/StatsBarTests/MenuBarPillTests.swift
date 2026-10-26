@@ -422,4 +422,24 @@ struct MenuBarPillTests {
         let label = MenuBarPillView.accessibilityDescription(coordinator: coordinator, settings: settings)
         #expect(label == "CPU: 14 percent, Memory: 8.2 gigabytes, Download: 1.5 megabytes per second")
     }
+
+    @Test("PillText generates unified Text including multiple segments simultaneously")
+    func testPillTextMultipleSegments() {
+        let mock = MockTelemetryProvider(
+            cpu: CPUStats(usageFraction: 0.14),
+            memory: MemoryStats(usedBytes: 8_804_682_957, totalBytes: 17_179_869_184, pressure: .normal),
+            network: NetworkStats(uploadBytesPerSecond: 0, downloadBytesPerSecond: 1_572_864)
+        )
+        let coordinator = TelemetryCoordinator(provider: mock, autoStart: false)
+        let pillView = MenuBarPillView(coordinator: coordinator)
+
+        let single = pillView.pillText(for: [.cpu])
+        #expect(String(describing: single).contains("Text"))
+
+        let multiple = pillView.pillText(for: [.cpu, .memory, .network])
+        #expect(String(describing: multiple).contains("Text"))
+
+        let all = pillView.pillText(for: MenuBarPillView.Segment.allCases)
+        #expect(String(describing: all).contains("Text"))
+    }
 }

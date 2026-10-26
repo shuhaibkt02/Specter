@@ -43,80 +43,68 @@ public struct MenuBarPillView: View {
 
     public var body: some View {
         let active = Self.activeSegments(settings: settings, hasBattery: coordinator.currentBattery.hasBattery)
-        HStack(spacing: DesignTokens.Spacing.small) {
-            // Leading 6pt status dot: dim/secondary at idle, bright accent when popover is open
-            Circle()
-                .fill(coordinator.isPopoverPresented ? Color.accentColor : Color.secondary.opacity(0.45))
-                .frame(width: 6, height: 6)
-
-            if active.isEmpty {
-                Text("StatsBar")
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(Array(active.enumerated()), id: \.element) { index, segment in
-                    if index > 0 {
-                        // Subtle 1px vertical hairline divider between adjacent visible segments
-                        Rectangle()
-                            .fill(DesignTokens.Colors.borderHairline)
-                            .frame(width: 1, height: 11)
-                    }
-                    segmentView(for: segment)
-                }
-            }
+        if active.isEmpty {
+            Text("StatsBar")
+                .font(DesignTokens.Typography.pill)
+                .monospacedDigit()
+                .foregroundColor(.secondary)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Self.accessibilityDescription(coordinator: coordinator, settings: settings))
+        } else {
+            pillText(for: active)
+                .font(DesignTokens.Typography.pill)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Self.accessibilityDescription(coordinator: coordinator, settings: settings))
         }
-        .font(DesignTokens.Typography.pill)
-        .padding(.horizontal, DesignTokens.Spacing.small)
-        .padding(.vertical, DesignTokens.Spacing.xxSmall)
-        .frame(minHeight: DesignTokens.Geometry.pillMinHeight)
-        .background(
-            RoundedRectangle(cornerRadius: DesignTokens.Geometry.pillCornerRadius)
-                .fill(Color.primary.opacity(0.05))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Geometry.pillCornerRadius)
-                .strokeBorder(DesignTokens.Colors.borderHairline, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Geometry.pillCornerRadius))
-        .contentShape(RoundedRectangle(cornerRadius: DesignTokens.Geometry.pillCornerRadius))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Self.accessibilityDescription(coordinator: coordinator, settings: settings))
     }
 
-    // MARK: - Subviews
+    // MARK: - Menu Bar Text Formatting
 
-    @ViewBuilder
-    private func segmentView(for segment: Segment) -> some View {
+    public func pillText(for active: [Segment]) -> Text {
+        let dotColor: Color = coordinator.isPopoverPresented ? .accentColor : .secondary.opacity(0.5)
+        let dot = Text("● ").foregroundColor(dotColor)
+        var result = dot
+        for (index, segment) in active.enumerated() {
+            let piece = segmentText(for: segment)
+            if index > 0 {
+                let sep = Text(" │ ").foregroundColor(.secondary.opacity(0.4))
+                result = Text("\(result)\(sep)\(piece)")
+            } else {
+                result = Text("\(result)\(piece)")
+            }
+        }
+        return result
+    }
+
+    public func segmentText(for segment: Segment) -> Text {
         switch segment {
         case .cpu:
-            Text("CPU \(coordinator.currentCPU.percentageString)")
+            return Text("CPU \(coordinator.currentCPU.percentageString)")
                 .monospacedDigit()
-                .frame(minWidth: SegmentWidths.cpu, alignment: .trailing)
-                .foregroundStyle(Color.primary)
+                .foregroundColor(.primary)
 
         case .memory:
-            Text("MEM \(Self.formatPillMemory(coordinator.currentMemory.usedBytes))")
+            let tint = Self.warningTint(for: Self.memoryWarningState(pressure: coordinator.currentMemory.pressure))
+            return Text("MEM \(Self.formatPillMemory(coordinator.currentMemory.usedBytes))")
                 .monospacedDigit()
-                .frame(minWidth: SegmentWidths.memory, alignment: .trailing)
-                .foregroundStyle(Self.warningTint(for: Self.memoryWarningState(pressure: coordinator.currentMemory.pressure)))
+                .foregroundColor(tint)
 
         case .network:
-            Text("↓\(Self.formatPillNetwork(coordinator.currentNetwork.downloadBytesPerSecond))")
+            return Text("↓\(Self.formatPillNetwork(coordinator.currentNetwork.downloadBytesPerSecond))")
                 .monospacedDigit()
-                .frame(minWidth: SegmentWidths.network, alignment: .trailing)
-                .foregroundStyle(Color.primary)
+                .foregroundColor(.primary)
 
         case .disk:
-            Text("DISK \(Self.formatPillDisk(coordinator.currentDisk.usedBytes))")
+            return Text("DISK \(Self.formatPillDisk(coordinator.currentDisk.usedBytes))")
                 .monospacedDigit()
-                .frame(minWidth: SegmentWidths.disk, alignment: .trailing)
-                .foregroundStyle(Color.primary)
+                .foregroundColor(.primary)
 
         case .battery:
-            Text("BAT \(coordinator.currentBattery.percentageString)\(coordinator.currentBattery.isCharging ? "⚡" : "")")
+            let tint = Self.warningTint(for: Self.batteryWarningState(battery: coordinator.currentBattery))
+            let bolt = coordinator.currentBattery.isCharging ? "⚡" : ""
+            return Text("BAT \(coordinator.currentBattery.percentageString)\(bolt)")
                 .monospacedDigit()
-                .frame(minWidth: SegmentWidths.battery, alignment: .trailing)
-                .foregroundStyle(Self.warningTint(for: Self.batteryWarningState(battery: coordinator.currentBattery)))
+                .foregroundColor(tint)
         }
     }
 
