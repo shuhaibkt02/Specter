@@ -69,14 +69,16 @@ public final class ProcessCollector: @unchecked Sendable {
                     }
                 }
 
+                // Query physical memory footprint (Activity Monitor metric) with fallback to resident size
+                let ram = Self.physicalFootprintForPID(pid) ?? taskInfo.pti_resident_size
                 let isUser = Self.isUserProcess(pid: pid)
                 let name = Self.nameForPID(pid)
-                let appGroup = appGroupForPID(pid)
+                let appGroup = isUser ? appGroupForPID(pid) : nil
                 let snap = ProcessSnapshot(
                     id: pid,
                     name: name,
                     cpuFraction: fraction,
-                    ramBytes: taskInfo.pti_resident_size,
+                    ramBytes: ram,
                     isUserApp: isUser,
                     groupIdentifier: appGroup?.identifier,
                     groupName: appGroup?.name
@@ -89,11 +91,28 @@ public final class ProcessCollector: @unchecked Sendable {
         }
     }
 
+    /// Reads the physical memory footprint of a process (matching macOS Activity Monitor).
+    /// Returns private dirty memory instead of gross virtual memory / shared library cache.
+    public static func physicalFootprintForPID(_ pid: pid_t) -> UInt64? {
+        var rusage = rusage_info_v4()
+        let res = withUnsafeMutablePointer(to: &rusage) { ptr in
+            ptr.withMemoryRebound(to: (rusage_info_t?).self, capacity: 1) { rusagePtr in
+                proc_pid_rusage(pid, RUSAGE_INFO_V4, rusagePtr)
+            }
+        }
+        if res == 0 && rusage.ri_phys_footprint > 0 {
+            return rusage.ri_phys_footprint
+        }
+        return nil
+    }
+
     /// Determines whether the process is a user-space application vs a system daemon.
     public static func isUserProcess(pid: pid_t) -> Bool {
         var bsdInfo = proc_bsdinfo()
         let size = proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &bsdInfo, Int32(MemoryLayout<proc_bsdinfo>.size))
         guard size == MemoryLayout<proc_bsdinfo>.size else { return false }
+        // Fast-path: root and system daemons (UID < 500) bypass expensive path string allocations
+        guard bsdInfo.pbi_uid >= 500 else { return false }
         var pathBuffer = [CChar](repeating: 0, count: 1024)
         let pathLen = proc_pidpath(pid, &pathBuffer, UInt32(pathBuffer.count))
         let path = pathLen > 0 ? pathBuffer.withUnsafeBufferPointer { ptr in
@@ -134,25 +153,24 @@ public final class ProcessCollector: @unchecked Sendable {
     }
 
     private func appGroupForPID(_ pid: pid_t) -> (identifier: String, name: String)? {
-        var pathBuffer = [CChar](repeating: 0, count: 4_096)
+        var pathBuffer = [CChar](repeating: 0, count: 1024)
         let pathLength = proc_pidpath(pid, &pathBuffer, UInt32(pathBuffer.count))
         guard pathLength > 0 else { return nil }
         let path = pathBuffer.withUnsafeBufferPointer { buffer in
             guard let base = buffer.baseAddress else { return "" }
             return String(cString: base)
         }
-        let components = URL(fileURLWithPath: path).standardizedFileURL.pathComponents
-        guard let appIndex = components.firstIndex(where: { $0.hasSuffix(".app") }) else { return nil }
-        let appPath = NSString.path(withComponents: Array(components.prefix(appIndex + 1)))
+        guard let appRange = path.range(of: ".app") else { return nil }
+        let appPath = String(path[..<appRange.upperBound])
         if let cachedGroup = appGroupCache[appPath] {
             return cachedGroup
         }
         let appURL = URL(fileURLWithPath: appPath)
         let bundle = Bundle(url: appURL)
-        let identifier = bundle?.bundleIdentifier ?? appURL.path
+        let identifier = bundle?.bundleIdentifier ?? appPath
         let name = bundle?.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
             ?? bundle?.object(forInfoDictionaryKey: "CFBundleName") as? String
-            ?? appURL.deletingPathExtension().lastPathComponent
+            ?? (appPath as NSString).lastPathComponent.replacingOccurrences(of: ".app", with: "")
         let appGroup = (identifier, name)
         appGroupCache[appPath] = appGroup
         return appGroup

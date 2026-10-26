@@ -64,43 +64,45 @@ public final class TelemetryCoordinator {
         let isPresented = self.isPopoverPresented
         let provider = self.provider
         queue.async { [weak self] in
-            let cpu = provider.sampleCPU()
-            let memory = provider.sampleMemory()
-            let network = provider.sampleNetwork()
-            let disk = provider.sampleDisk()
-            let battery = provider.sampleBattery()
-            let silicon = isPresented ? provider.sampleAppleSilicon() : nil
-            let procs = isPresented ? provider.sampleAllProcesses() : []
-            let memProcs = procs.sorted { $0.ramBytes > $1.ramBytes }
+            autoreleasepool {
+                let cpu = provider.sampleCPU()
+                let memory = provider.sampleMemory()
+                let network = provider.sampleNetwork()
+                let disk = provider.sampleDisk()
+                let battery = provider.sampleBattery()
+                let silicon = isPresented ? provider.sampleAppleSilicon() : nil
+                let procs = isPresented ? provider.sampleAllProcesses() : []
+                let memProcs = procs.sorted { $0.ramBytes > $1.ramBytes }
 
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                self.currentCPU = cpu
-                self.cpuHistory.append(cpu.usageFraction)
-                if self.cpuHistory.count > 30 {
-                    self.cpuHistory.removeFirst()
-                }
-                self.currentMemory = memory
-                self.memoryHistory.append(memory.usedFraction)
-                if self.memoryHistory.count > 30 {
-                    self.memoryHistory.removeFirst()
-                }
-                self.currentNetwork = network
-                let maxRef = max(network.downloadBytesPerSecond, 1_048_576.0)
-                let netFraction = min(max(network.downloadBytesPerSecond / maxRef, 0.0), 1.0)
-                self.networkHistory.append(netFraction)
-                if self.networkHistory.count > 30 {
-                    self.networkHistory.removeFirst()
-                }
-                self.currentDisk = disk
-                self.currentBattery = battery
-                if isPresented {
-                    if let silicon {
-                        self.currentAppleSilicon = silicon
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    self.currentCPU = cpu
+                    self.cpuHistory.append(cpu.usageFraction)
+                    if self.cpuHistory.count > 30 {
+                        self.cpuHistory.removeFirst()
                     }
-                    self.allProcesses = procs
-                    self.topProcesses = Array(procs.sorted { $0.cpuFraction > $1.cpuFraction }.prefix(20))
-                    self.topMemoryProcesses = Array(memProcs.prefix(20))
+                    self.currentMemory = memory
+                    self.memoryHistory.append(memory.usedFraction)
+                    if self.memoryHistory.count > 30 {
+                        self.memoryHistory.removeFirst()
+                    }
+                    self.currentNetwork = network
+                    let peakNetwork = max(self.networkHistory.max() ?? 1.0, 1.0)
+                    let netFraction = min(max(network.downloadBytesPerSecond / (peakNetwork * 1_048_576.0), 0.0), 1.0)
+                    self.networkHistory.append(netFraction)
+                    if self.networkHistory.count > 30 {
+                        self.networkHistory.removeFirst()
+                    }
+                    self.currentDisk = disk
+                    self.currentBattery = battery
+                    if isPresented {
+                        if let silicon {
+                            self.currentAppleSilicon = silicon
+                        }
+                        self.allProcesses = procs
+                        self.topProcesses = Array(procs.sorted { $0.cpuFraction > $1.cpuFraction }.prefix(20))
+                        self.topMemoryProcesses = Array(memProcs.prefix(20))
+                    }
                 }
             }
         }

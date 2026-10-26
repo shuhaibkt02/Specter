@@ -74,4 +74,8 @@ public final class SystemTelemetryProvider: TelemetryProviding, @unchecked Senda
     public func sampleAllProcesses() -> [ProcessSnapshot] {
         processCollector.sampleAllProcesses()
     }
+
+    public func sampleProcesses(limit: Int) -> (topCPU: [ProcessSnapshot], topMemory: [ProcessSnapshot]) {
+        processCollector.sampleProcesses(limit: limit)
+    }
 }

@@ -11,6 +11,7 @@ public protocol TelemetryProviding: Sendable {
     func sampleTopProcesses(limit: Int) -> [ProcessSnapshot]
     func sampleTopMemoryProcesses(limit: Int) -> [ProcessSnapshot]
     func sampleAllProcesses() -> [ProcessSnapshot]
+    func sampleProcesses(limit: Int) -> (topCPU: [ProcessSnapshot], topMemory: [ProcessSnapshot])
 }
 
 extension TelemetryProviding {
@@ -20,6 +21,10 @@ extension TelemetryProviding {
 
     public func sampleAllProcesses() -> [ProcessSnapshot] {
         sampleTopProcesses(limit: Int.max)
+    }
+
+    public func sampleProcesses(limit: Int) -> (topCPU: [ProcessSnapshot], topMemory: [ProcessSnapshot]) {
+        (sampleTopProcesses(limit: limit), sampleTopMemoryProcesses(limit: limit))
     }
 }
 
@@ -106,5 +111,9 @@ public final class MockTelemetryProvider: TelemetryProviding, @unchecked Sendabl
     public func sampleAllProcesses() -> [ProcessSnapshot] {
         processSampleCount += 1
         return processesToReturn
+    }
+
+    public func sampleProcesses(limit: Int) -> (topCPU: [ProcessSnapshot], topMemory: [ProcessSnapshot]) {
+        (sampleTopProcesses(limit: limit), sampleTopMemoryProcesses(limit: limit))
     }
 }
