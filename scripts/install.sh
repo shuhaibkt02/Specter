@@ -22,6 +22,7 @@ mkdir -p "${RESOURCES_DIR}"
 # Copy compiled executable and Info.plist
 cp "${BUILD_DIR}/${APP_NAME}" "${MACOS_DIR}/${APP_NAME}"
 cp "Resources/Info.plist" "${CONTENTS_DIR}/Info.plist"
+cp "Resources/${APP_NAME}.icns" "${RESOURCES_DIR}/${APP_NAME}.icns"
 
 # Ad-hoc code signing (Never expires on your Mac, no paid Apple Developer account needed)
 echo "🔏 Code signing (Ad-Hoc / Lifelong)..."
