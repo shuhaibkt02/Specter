@@ -21,19 +21,23 @@ struct StatsBarApp: App {
         MenuBarExtra {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.interCardGap) {
                 // Popover Header
-                HStack(alignment: .center) {
+                HStack(alignment: .center, spacing: DesignTokens.Spacing.small) {
                     Text(showingSettings ? "Settings" : "StatsBar")
                         .font(DesignTokens.Typography.cardTitle)
                         .foregroundStyle(.primary)
 
                     if !showingSettings {
-                        Text("● Live Telemetry")
-                            .font(DesignTokens.Typography.caption)
-                            .foregroundStyle(.secondary)
-                            .padding(.leading, 4)
+                        diskMicroPill
+                        batteryMicroPill
                     }
 
                     Spacer()
+
+                    if !showingSettings {
+                        Text("● Live")
+                            .font(DesignTokens.Typography.caption)
+                            .foregroundStyle(DesignTokens.Colors.normal)
+                    }
 
                     // Gear button to toggle settings (⌘,)
                     Button(action: { showingSettings.toggle() }) {
@@ -117,22 +121,14 @@ struct StatsBarApp: App {
 
     private var vitalsColumn: some View {
         VStack(spacing: DesignTokens.Spacing.interCardGap) {
-            // 1. CPU Card with P/E cores and SoC temp (vitals glance)
+            // 1. CPU Card with P/E cores, load sparkline, and SoC temp
             CPUCardView(coordinator: coordinator, showProcesses: false)
 
-            // 2. Memory Card with Pressure Status & Swap (vitals glance)
+            // 2. Memory Card with Pressure Status, RAM allocation, and Swap
             MemoryCardView(coordinator: coordinator, showProcesses: false)
 
-            // 3. Network Card with Throughput & Interface
+            // 3. Network Card with Throughput & BSD Interface
             NetworkCardView(coordinator: coordinator)
-
-            // 4. Disk Card with Capacity & Block I/O Throughput
-            DiskCardView(coordinator: coordinator)
-
-            // 5. Battery Card (shown if device has battery)
-            if coordinator.currentBattery.hasBattery {
-                BatteryCardView(coordinator: coordinator)
-            }
         }
     }
 
@@ -164,5 +160,62 @@ struct StatsBarApp: App {
             RoundedRectangle(cornerRadius: DesignTokens.Geometry.cardCornerRadius)
                 .stroke(DesignTokens.Colors.borderHairline, lineWidth: 1)
         )
+    }
+
+    private var diskMicroPill: some View {
+        let disk = coordinator.currentDisk
+        let pct = Int((disk.usedFraction * 100).rounded())
+        let tooltip = "Disk: \(disk.formattedUsedGB) used of \(disk.formattedTotalGB) (\(pct)%)\nRead: \(disk.formattedRead) · Write: \(disk.formattedWrite)"
+
+        return HStack(spacing: 4) {
+            Image(systemName: "internaldrive")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.secondary)
+            Text("\(disk.formattedUsedGB) / \(disk.formattedTotalGB)")
+                .font(DesignTokens.Typography.caption)
+                .monospacedDigit()
+                .foregroundStyle(.primary)
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .background(Color.primary.opacity(0.04))
+        .clipShape(RoundedRectangle(cornerRadius: 5))
+        .overlay(
+            RoundedRectangle(cornerRadius: 5)
+                .stroke(DesignTokens.Colors.borderHairline, lineWidth: 0.5)
+        )
+        .help(tooltip)
+    }
+
+    @ViewBuilder
+    private var batteryMicroPill: some View {
+        if coordinator.currentBattery.hasBattery {
+            let batt = coordinator.currentBattery
+            let battTint: Color = batt.capacityFraction <= 0.10 ? DesignTokens.Colors.critical : (batt.capacityFraction <= 0.20 ? DesignTokens.Colors.warning : .primary)
+            let iconName = batt.isCharging ? "battery.100.bolt" : (batt.capacityFraction <= 0.20 ? "battery.25" : "battery.100")
+            let bolt = batt.isCharging ? " ⚡" : ""
+            let timeStr = batt.formattedTimeRemaining ?? "Calculating..."
+            let condStr = batt.condition ?? "Normal"
+            let tooltip = "Battery: \(batt.percentageString)\(batt.isCharging ? " (Charging)" : "")\nCondition: \(condStr)\nTime Remaining: \(timeStr)"
+
+            HStack(spacing: 4) {
+                Image(systemName: iconName)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(battTint)
+                Text("\(batt.percentageString)\(bolt)")
+                    .font(DesignTokens.Typography.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(battTint)
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(Color.primary.opacity(0.04))
+            .clipShape(RoundedRectangle(cornerRadius: 5))
+            .overlay(
+                RoundedRectangle(cornerRadius: 5)
+                    .stroke(DesignTokens.Colors.borderHairline, lineWidth: 0.5)
+            )
+            .help(tooltip)
+        }
     }
 }
