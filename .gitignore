@@ -10,7 +10,11 @@ reference_stats/
 build/
 DerivedData/
 .build/
+.swiftpm/
 *.xcodeproj/*
 !*.xcodeproj/project.pbxproj
 *.xcworkspace/*
 !*.xcworkspace/contents.xcworkspacedata
+doc/
+.agents/
+.scratch/
