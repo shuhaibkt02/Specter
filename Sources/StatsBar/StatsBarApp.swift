@@ -26,6 +26,19 @@ struct StatsBarApp: App {
                         .font(DesignTokens.Typography.cardTitle)
                         .foregroundStyle(.primary)
 
+                    if !showingSettings {
+                        Picker("View Mode", selection: $settings.isTroubleshootingMode) {
+                            Text("Vitals").tag(false)
+                            Text("Detailed").tag(true)
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .controlSize(.mini)
+                        .frame(width: 124)
+                        .help("Toggle Vitals only or Detailed process troubleshooting (⌘D)")
+                        .keyboardShortcut("d", modifiers: .command)
+                    }
+
                     Spacer()
 
                     // Gear button to toggle settings (⌘,)
@@ -94,12 +107,14 @@ struct StatsBarApp: App {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: DesignTokens.Spacing.interCardGap) {
                 // 1. CPU Card with P/E cores and Top Processes
-                CPUCardView(coordinator: coordinator) { pid in
+                CPUCardView(coordinator: coordinator, showProcesses: settings.isTroubleshootingMode) { pid in
                     kill(pid, SIGTERM)
                 }
 
-                // 2. Memory Card with Pressure Status & Swap
-                MemoryCardView(coordinator: coordinator)
+                // 2. Memory Card with Pressure Status, Swap, and Top Processes
+                MemoryCardView(coordinator: coordinator, showProcesses: settings.isTroubleshootingMode) { pid in
+                    kill(pid, SIGTERM)
+                }
 
                 // 3. Network Card with Throughput & Interface
                 NetworkCardView(coordinator: coordinator)
@@ -114,7 +129,7 @@ struct StatsBarApp: App {
             }
             .padding(.horizontal, 1)
         }
-        .frame(minHeight: 460, maxHeight: DesignTokens.Geometry.popoverMaxHeight)
+        .frame(minHeight: settings.isTroubleshootingMode ? 460 : 320, maxHeight: DesignTokens.Geometry.popoverMaxHeight)
         .onAppear {
             coordinator.isPopoverPresented = true
             coordinator.tick()

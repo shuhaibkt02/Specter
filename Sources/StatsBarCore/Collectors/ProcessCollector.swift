@@ -13,18 +13,30 @@ public final class ProcessCollector: @unchecked Sendable {
 
     /// Samples all active processes and returns top N by CPU consumption.
     public func sampleTopProcesses(limit: Int = 5) -> [ProcessSnapshot] {
+        sampleProcesses(limit: limit).topCPU
+    }
+
+    /// Samples all active processes and returns top N by resident memory (RAM).
+    public func sampleTopMemoryProcesses(limit: Int = 5) -> [ProcessSnapshot] {
+        sampleProcesses(limit: limit).topMemory
+    }
+
+    /// Samples all active processes in a single Darwin libproc pass and returns top items by CPU and Memory.
+    public func sampleProcesses(limit: Int = 15) -> (topCPU: [ProcessSnapshot], topMemory: [ProcessSnapshot]) {
         autoreleasepool {
             let count = proc_listallpids(nil, 0)
-            guard count > 0 else { return [] }
+            guard count > 0 else { return ([], []) }
 
             var pids = [pid_t](repeating: 0, count: Int(count))
             let actualCount = proc_listallpids(&pids, Int32(MemoryLayout<pid_t>.size * pids.count))
-            guard actualCount > 0 else { return [] }
+            guard actualCount > 0 else { return ([], []) }
 
             let now = DispatchTime.now().uptimeNanoseconds
-            var deltas: [(pid: pid_t, fraction: Double)] = []
             var currentSamples: [pid_t: (cpuNanos: UInt64, timestamp: UInt64)] = [:]
             currentSamples.reserveCapacity(Int(actualCount))
+
+            var snapshots: [ProcessSnapshot] = []
+            snapshots.reserveCapacity(Int(actualCount))
 
             for pid in pids.prefix(Int(actualCount)) where pid > 0 {
                 var taskInfo = proc_taskinfo()
@@ -34,41 +46,56 @@ public final class ProcessCollector: @unchecked Sendable {
                 let totalCpu = taskInfo.pti_total_user &+ taskInfo.pti_total_system
                 currentSamples[pid] = (cpuNanos: totalCpu, timestamp: now)
 
+                var fraction = 0.0
                 if let prev = previousSamples[pid], now > prev.timestamp {
                     let cpuDelta = Double(totalCpu &- prev.cpuNanos)
                     let timeDelta = Double(now - prev.timestamp)
                     if timeDelta > 0 {
-                        let fraction = cpuDelta / timeDelta
-                        if fraction >= 0.0 {
-                            deltas.append((pid: pid, fraction: fraction))
-                        }
+                        fraction = max(cpuDelta / timeDelta, 0.0)
                     }
                 }
+
+                let isUser = Self.isUserProcess(pid: pid)
+                let name = Self.nameForPID(pid)
+                let snap = ProcessSnapshot(
+                    id: pid,
+                    name: name,
+                    cpuFraction: fraction,
+                    ramBytes: taskInfo.pti_resident_size,
+                    isUserApp: isUser
+                )
+                snapshots.append(snap)
             }
 
             previousSamples = currentSamples
-            deltas.sort { $0.fraction > $1.fraction }
 
-            if !deltas.isEmpty {
-                return deltas.prefix(limit).map { item in
-                    ProcessSnapshot(
-                        id: item.pid,
-                        name: Self.nameForPID(item.pid),
-                        cpuFraction: item.fraction
-                    )
-                }
-            }
+            let cpuSorted = snapshots.sorted { $0.cpuFraction > $1.cpuFraction }
+            let memSorted = snapshots.sorted { $0.ramBytes > $1.ramBytes }
 
-            // Fallback for baseline tick: display top running processes by cumulative CPU time
-            let fallback = currentSamples.sorted { $0.value.cpuNanos > $1.value.cpuNanos }.prefix(limit)
-            return fallback.map { item in
-                ProcessSnapshot(
-                    id: item.key,
-                    name: Self.nameForPID(item.key),
-                    cpuFraction: 0.0
-                )
-            }
+            return (
+                topCPU: Array(cpuSorted.prefix(limit)),
+                topMemory: Array(memSorted.prefix(limit))
+            )
         }
+    }
+
+    /// Determines whether the process is a user-space application vs a system daemon.
+    public static func isUserProcess(pid: pid_t) -> Bool {
+        var bsdInfo = proc_bsdinfo()
+        let size = proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &bsdInfo, Int32(MemoryLayout<proc_bsdinfo>.size))
+        guard size == MemoryLayout<proc_bsdinfo>.size else { return false }
+        if bsdInfo.pbi_uid < 500 { return false }
+        var pathBuffer = [CChar](repeating: 0, count: 1024)
+        let pathLen = proc_pidpath(pid, &pathBuffer, UInt32(pathBuffer.count))
+        guard pathLen > 0 else { return true }
+        let path = pathBuffer.withUnsafeBufferPointer { ptr in
+            guard let base = ptr.baseAddress else { return "" }
+            return String(cString: base)
+        }
+        if path.hasPrefix("/System/") || path.hasPrefix("/usr/") || path.hasPrefix("/sbin/") {
+            return false
+        }
+        return true
     }
 
     /// Resolves human-readable process name without shelling out.

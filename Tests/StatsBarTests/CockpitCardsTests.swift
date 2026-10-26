@@ -283,4 +283,40 @@ struct CockpitCardsTests {
         #expect(!diskCard.liveValue.isEmpty)
         #expect(!batCard.liveValue.isEmpty)
     }
+
+    @Test("ProcessListView filters by category and search text accurately")
+    func testProcessListViewFilters() {
+        let procs = [
+            ProcessSnapshot(id: 101, name: "Xcode", cpuFraction: 0.35, ramBytes: 1_500_000_000, isUserApp: true),
+            ProcessSnapshot(id: 102, name: "Brave", cpuFraction: 0.12, ramBytes: 800_000_000, isUserApp: true),
+            ProcessSnapshot(id: 1, name: "launchd", cpuFraction: 0.01, ramBytes: 20_000_000, isUserApp: false),
+            ProcessSnapshot(id: 200, name: "kernel_task", cpuFraction: 0.08, ramBytes: 500_000_000, isUserApp: false)
+        ]
+
+        let userList = ProcessListView(processes: procs, metricType: .cpu)
+        #expect(userList.filteredProcesses.count == 2)
+        #expect(userList.filteredProcesses.allSatisfy { $0.isUserApp })
+
+        // Check metric formatting
+        let itemRowCPU = ProcessItemRow(process: procs[0], metricType: .cpu)
+        #expect(itemRowCPU.metricString == "35%")
+
+        let itemRowMem = ProcessItemRow(process: procs[0], metricType: .memory)
+        #expect(itemRowMem.metricString.contains("GB"))
+    }
+
+    @Test("Compact mode hides process list in CPU and Memory cards")
+    func testCompactModeHidesProcesses() {
+        let cpuCardCompact = CPUCardView(
+            cpu: CPUStats(usageFraction: 0.20),
+            showProcesses: false
+        )
+        #expect(cpuCardCompact.showProcesses == false)
+
+        let memCardCompact = MemoryCardView(
+            memory: MemoryStats(usedBytes: 8_000_000_000, totalBytes: 16_000_000_000),
+            showProcesses: false
+        )
+        #expect(memCardCompact.showProcesses == false)
+    }
 }

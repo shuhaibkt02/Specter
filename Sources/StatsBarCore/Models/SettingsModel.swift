@@ -40,6 +40,9 @@ public final class SettingsModel {
     public var launchAtLogin: Bool {
         didSet { defaults.set(launchAtLogin, forKey: "StatsBar_launchAtLogin") }
     }
+    public var isTroubleshootingMode: Bool {
+        didSet { defaults.set(isTroubleshootingMode, forKey: "StatsBar_isTroubleshootingMode") }
+    }
 
     private let defaults: UserDefaults
 
@@ -55,5 +58,6 @@ public final class SettingsModel {
         self.temperatureUnit = TemperatureUnit(rawValue: tempRaw) ?? .celsius
         self.showPerCoreBreakdown = defaults.object(forKey: "StatsBar_showPerCoreBreakdown") as? Bool ?? true
         self.launchAtLogin = defaults.object(forKey: "StatsBar_launchAtLogin") as? Bool ?? true
+        self.isTroubleshootingMode = defaults.object(forKey: "StatsBar_isTroubleshootingMode") as? Bool ?? true
     }
 }

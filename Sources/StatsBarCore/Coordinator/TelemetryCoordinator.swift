@@ -15,6 +15,7 @@ public final class TelemetryCoordinator {
     public var currentBattery: BatteryStats = BatteryStats()
     public var currentAppleSilicon: AppleSiliconStats = AppleSiliconStats()
     public var topProcesses: [ProcessSnapshot] = []
+    public var topMemoryProcesses: [ProcessSnapshot] = []
     
     public var backgroundInterval: Double = 2.0 {
         didSet {
@@ -68,7 +69,8 @@ public final class TelemetryCoordinator {
             let disk = provider.sampleDisk()
             let battery = provider.sampleBattery()
             let silicon = isPresented ? provider.sampleAppleSilicon() : nil
-            let procs = isPresented ? provider.sampleTopProcesses(limit: 5) : []
+            let procs = isPresented ? provider.sampleTopProcesses(limit: 20) : []
+            let memProcs = isPresented ? provider.sampleTopMemoryProcesses(limit: 20) : []
 
             Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -97,6 +99,9 @@ public final class TelemetryCoordinator {
                     }
                     if !procs.isEmpty {
                         self.topProcesses = procs
+                    }
+                    if !memProcs.isEmpty {
+                        self.topMemoryProcesses = memProcs
                     }
                 }
             }

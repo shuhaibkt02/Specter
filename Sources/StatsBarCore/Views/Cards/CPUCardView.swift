@@ -9,6 +9,7 @@ public struct CPUCardView: View {
     public let history: [Double]
     public let silicon: AppleSiliconStats
     public let topProcesses: [ProcessSnapshot]
+    public let showProcesses: Bool
     public var onQuitProcess: ((pid_t) -> Void)?
 
     public init(
@@ -16,6 +17,7 @@ public struct CPUCardView: View {
         history: [Double] = [],
         silicon: AppleSiliconStats = AppleSiliconStats(),
         topProcesses: [ProcessSnapshot] = [],
+        showProcesses: Bool = true,
         onQuitProcess: ((pid_t) -> Void)? = nil
     ) {
         self.coordinator = nil
@@ -23,15 +25,21 @@ public struct CPUCardView: View {
         self.history = history
         self.silicon = silicon
         self.topProcesses = topProcesses
+        self.showProcesses = showProcesses
         self.onQuitProcess = onQuitProcess
     }
 
-    public init(coordinator: TelemetryCoordinator, onQuitProcess: ((pid_t) -> Void)? = nil) {
+    public init(
+        coordinator: TelemetryCoordinator,
+        showProcesses: Bool = true,
+        onQuitProcess: ((pid_t) -> Void)? = nil
+    ) {
         self.coordinator = coordinator
         self.cpu = coordinator.currentCPU
         self.history = coordinator.cpuHistory
         self.silicon = coordinator.currentAppleSilicon
         self.topProcesses = coordinator.topProcesses
+        self.showProcesses = showProcesses
         self.onQuitProcess = onQuitProcess
     }
 
@@ -122,34 +130,12 @@ public struct CPUCardView: View {
 
     @ViewBuilder
     private var detailContent: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xSmall) {
-            Text("Top Processes")
-                .font(DesignTokens.Typography.captionSecondary)
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-                .padding(.top, 2)
-
-            if activeProcesses.isEmpty {
-                // Tier-2 skeleton rows per Doc 07 (zero-flicker reserved space)
-                ForEach(0..<5, id: \.self) { _ in
-                    HStack {
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(DesignTokens.Colors.trackBackground)
-                            .frame(width: 90, height: 11)
-                        Spacer()
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(DesignTokens.Colors.trackBackground)
-                            .frame(width: 32, height: 11)
-                    }
-                    .frame(height: 24)
-                }
-            } else {
-                ForEach(activeProcesses.prefix(5)) { process in
-                    ProcessRowView(process: process) { pid in
-                        onQuitProcess?(pid)
-                    }
-                }
-            }
+        if showProcesses {
+            ProcessListView(
+                processes: activeProcesses,
+                metricType: .cpu,
+                onQuitProcess: onQuitProcess
+            )
         }
     }
 }

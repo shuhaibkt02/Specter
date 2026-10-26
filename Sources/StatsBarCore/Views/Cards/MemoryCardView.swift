@@ -7,21 +7,41 @@ public struct MemoryCardView: View {
     private let coordinator: TelemetryCoordinator?
     public let memory: MemoryStats
     public let history: [Double]
+    public let topProcesses: [ProcessSnapshot]
+    public let showProcesses: Bool
+    public var onQuitProcess: ((pid_t) -> Void)?
 
-    public init(memory: MemoryStats, history: [Double] = []) {
+    public init(
+        memory: MemoryStats,
+        history: [Double] = [],
+        topProcesses: [ProcessSnapshot] = [],
+        showProcesses: Bool = true,
+        onQuitProcess: ((pid_t) -> Void)? = nil
+    ) {
         self.coordinator = nil
         self.memory = memory
         self.history = history
+        self.topProcesses = topProcesses
+        self.showProcesses = showProcesses
+        self.onQuitProcess = onQuitProcess
     }
 
-    public init(coordinator: TelemetryCoordinator) {
+    public init(
+        coordinator: TelemetryCoordinator,
+        showProcesses: Bool = true,
+        onQuitProcess: ((pid_t) -> Void)? = nil
+    ) {
         self.coordinator = coordinator
         self.memory = coordinator.currentMemory
         self.history = coordinator.memoryHistory
+        self.topProcesses = coordinator.topMemoryProcesses
+        self.showProcesses = showProcesses
+        self.onQuitProcess = onQuitProcess
     }
 
     private var activeMemory: MemoryStats { coordinator?.currentMemory ?? memory }
     private var activeHistory: [Double] { coordinator?.memoryHistory ?? history }
+    private var activeProcesses: [ProcessSnapshot] { coordinator?.topMemoryProcesses ?? topProcesses }
 
     public var liveValue: String {
         "\(activeMemory.formattedUsedGB) / \(activeMemory.formattedTotalGB)"
@@ -70,6 +90,15 @@ public struct MemoryCardView: View {
                         .font(DesignTokens.Typography.caption)
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
+                }
+            },
+            detail: {
+                if showProcesses {
+                    ProcessListView(
+                        processes: activeProcesses,
+                        metricType: .memory,
+                        onQuitProcess: onQuitProcess
+                    )
                 }
             }
         )

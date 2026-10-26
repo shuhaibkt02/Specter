@@ -9,6 +9,13 @@ public protocol TelemetryProviding: Sendable {
     func sampleBattery() -> BatteryStats
     func sampleAppleSilicon() -> AppleSiliconStats
     func sampleTopProcesses(limit: Int) -> [ProcessSnapshot]
+    func sampleTopMemoryProcesses(limit: Int) -> [ProcessSnapshot]
+}
+
+extension TelemetryProviding {
+    public func sampleTopMemoryProcesses(limit: Int) -> [ProcessSnapshot] {
+        []
+    }
 }
 
 /// A synthetic telemetry provider used in unit tests to inject deterministic data.
@@ -20,6 +27,7 @@ public final class MockTelemetryProvider: TelemetryProviding, @unchecked Sendabl
     public var batteryToReturn: BatteryStats
     public var appleSiliconToReturn: AppleSiliconStats
     public var processesToReturn: [ProcessSnapshot]
+    public var memoryProcessesToReturn: [ProcessSnapshot] = []
     
     public private(set) var cpuSampleCount: Int = 0
     public private(set) var memorySampleCount: Int = 0
@@ -28,6 +36,7 @@ public final class MockTelemetryProvider: TelemetryProviding, @unchecked Sendabl
     public private(set) var batterySampleCount: Int = 0
     public private(set) var appleSiliconSampleCount: Int = 0
     public private(set) var processSampleCount: Int = 0
+    public private(set) var memoryProcessSampleCount: Int = 0
 
     public init(
         cpu: CPUStats = CPUStats(),
@@ -36,7 +45,8 @@ public final class MockTelemetryProvider: TelemetryProviding, @unchecked Sendabl
         disk: DiskStats = DiskStats(),
         battery: BatteryStats = BatteryStats(),
         appleSilicon: AppleSiliconStats = AppleSiliconStats(),
-        processes: [ProcessSnapshot] = []
+        processes: [ProcessSnapshot] = [],
+        memoryProcesses: [ProcessSnapshot] = []
     ) {
         self.cpuToReturn = cpu
         self.memoryToReturn = memory
@@ -45,6 +55,7 @@ public final class MockTelemetryProvider: TelemetryProviding, @unchecked Sendabl
         self.batteryToReturn = battery
         self.appleSiliconToReturn = appleSilicon
         self.processesToReturn = processes
+        self.memoryProcessesToReturn = memoryProcesses
     }
 
     public func sampleCPU() -> CPUStats {
@@ -80,5 +91,10 @@ public final class MockTelemetryProvider: TelemetryProviding, @unchecked Sendabl
     public func sampleTopProcesses(limit: Int) -> [ProcessSnapshot] {
         processSampleCount += 1
         return Array(processesToReturn.prefix(limit))
+    }
+
+    public func sampleTopMemoryProcesses(limit: Int) -> [ProcessSnapshot] {
+        memoryProcessSampleCount += 1
+        return Array(memoryProcessesToReturn.prefix(limit))
     }
 }
