@@ -27,16 +27,10 @@ struct StatsBarApp: App {
                         .foregroundStyle(.primary)
 
                     if !showingSettings {
-                        Picker("View Mode", selection: $settings.isTroubleshootingMode) {
-                            Text("Vitals").tag(false)
-                            Text("Detailed").tag(true)
-                        }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
-                        .controlSize(.mini)
-                        .frame(width: 124)
-                        .help("Toggle Vitals only or Detailed process troubleshooting (⌘D)")
-                        .keyboardShortcut("d", modifiers: .command)
+                        Text("● Live Telemetry")
+                            .font(DesignTokens.Typography.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.leading, 4)
                     }
 
                     Spacer()
@@ -76,12 +70,14 @@ struct StatsBarApp: App {
                         hasBattery: coordinator.currentBattery.hasBattery,
                         onDismiss: { showingSettings = false }
                     )
+                    .frame(maxWidth: 360)
+                    .frame(maxWidth: .infinity, alignment: .center)
                 } else {
                     cockpitView
                 }
             }
             .padding(DesignTokens.Spacing.popoverPadding)
-            .frame(width: DesignTokens.Geometry.popoverWidth)
+            .frame(width: DesignTokens.Geometry.popoverTwoColumnWidth)
             .onAppear {
                 coordinator.isPopoverPresented = true
             }
@@ -104,35 +100,69 @@ struct StatsBarApp: App {
     }
 
     private var cockpitView: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(spacing: DesignTokens.Spacing.interCardGap) {
-                // 1. CPU Card with P/E cores and Top Processes
-                CPUCardView(coordinator: coordinator, showProcesses: settings.isTroubleshootingMode) { pid in
-                    kill(pid, SIGTERM)
-                }
+        HStack(alignment: .top, spacing: DesignTokens.Spacing.interCardGap) {
+            // Column 1: System Vitals
+            vitalsColumn
+                .frame(width: DesignTokens.Geometry.vitalsColumnWidth)
 
-                // 2. Memory Card with Pressure Status, Swap, and Top Processes
-                MemoryCardView(coordinator: coordinator, showProcesses: settings.isTroubleshootingMode) { pid in
-                    kill(pid, SIGTERM)
-                }
-
-                // 3. Network Card with Throughput & Interface
-                NetworkCardView(coordinator: coordinator)
-
-                // 4. Disk Card with Capacity & Block I/O Throughput
-                DiskCardView(coordinator: coordinator)
-
-                // 5. Battery Card (shown if device has battery)
-                if coordinator.currentBattery.hasBattery {
-                    BatteryCardView(coordinator: coordinator)
-                }
-            }
-            .padding(.horizontal, 1)
+            // Column 2: Process Inspector
+            processInspectorColumn
+                .frame(width: DesignTokens.Geometry.inspectorColumnWidth)
         }
-        .frame(minHeight: settings.isTroubleshootingMode ? 460 : 320, maxHeight: DesignTokens.Geometry.popoverMaxHeight)
         .onAppear {
             coordinator.isPopoverPresented = true
             coordinator.tick()
         }
+    }
+
+    private var vitalsColumn: some View {
+        VStack(spacing: DesignTokens.Spacing.interCardGap) {
+            // 1. CPU Card with P/E cores and SoC temp (vitals glance)
+            CPUCardView(coordinator: coordinator, showProcesses: false)
+
+            // 2. Memory Card with Pressure Status & Swap (vitals glance)
+            MemoryCardView(coordinator: coordinator, showProcesses: false)
+
+            // 3. Network Card with Throughput & Interface
+            NetworkCardView(coordinator: coordinator)
+
+            // 4. Disk Card with Capacity & Block I/O Throughput
+            DiskCardView(coordinator: coordinator)
+
+            // 5. Battery Card (shown if device has battery)
+            if coordinator.currentBattery.hasBattery {
+                BatteryCardView(coordinator: coordinator)
+            }
+        }
+    }
+
+    private var processInspectorColumn: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.intraCardGap) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Process Inspector")
+                    .font(DesignTokens.Typography.cardTitle)
+                    .foregroundStyle(.primary)
+
+                Circle()
+                    .fill(DesignTokens.Colors.normal)
+                    .frame(width: 6, height: 6)
+
+                Spacer()
+            }
+
+            ProcessListView(
+                cpuProcesses: coordinator.topProcesses,
+                memoryProcesses: coordinator.topMemoryProcesses
+            ) { pid in
+                kill(pid, SIGTERM)
+            }
+        }
+        .padding(DesignTokens.Spacing.cardPadding)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Geometry.cardCornerRadius))
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignTokens.Geometry.cardCornerRadius)
+                .stroke(DesignTokens.Colors.borderHairline, lineWidth: 1)
+        )
     }
 }

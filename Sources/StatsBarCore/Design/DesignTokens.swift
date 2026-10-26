@@ -21,6 +21,9 @@ public enum DesignTokens {
 
     public enum Geometry {
         public static let popoverWidth: CGFloat = 320
+        public static let popoverTwoColumnWidth: CGFloat = 590
+        public static let vitalsColumnWidth: CGFloat = 275
+        public static let inspectorColumnWidth: CGFloat = 303
         public static let popoverMaxHeight: CGFloat = 560
         public static let cardCornerRadius: CGFloat = 10
         public static let popoverCornerRadius: CGFloat = 10

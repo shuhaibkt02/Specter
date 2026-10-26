@@ -12,30 +12,56 @@ public enum ProcessMetricType: Sendable {
     case memory
 }
 
-/// Fluid, Apple-designed process list with User/System filter matrix, inline search,
-/// progressive disclosure (Top 5 default -> expandable scrollable list), and safe 2-step termination.
+/// Fluid, Apple-designed process inspector with User/System filter matrix, inline search,
+/// streamlined dual-row control header with integrated sort (CPU % vs RAM),
+/// and contextual progressive disclosure (6-item default cap, unrestricted when searching).
 public struct ProcessListView: View {
-    public let processes: [ProcessSnapshot]
-    public let metricType: ProcessMetricType
+    public let cpuProcesses: [ProcessSnapshot]
+    public let memoryProcesses: [ProcessSnapshot]
     public var onQuitProcess: ((pid_t) -> Void)?
 
     @State private var selectedCategory: ProcessCategory = .user
+    @State private var selectedMetric: ProcessMetricType = .cpu
     @State private var searchText: String = ""
     @State private var isExpanded: Bool = false
 
+    /// Primary initializer with dual CPU and Memory batches.
     public init(
-        processes: [ProcessSnapshot],
-        metricType: ProcessMetricType,
+        cpuProcesses: [ProcessSnapshot],
+        memoryProcesses: [ProcessSnapshot] = [],
         onQuitProcess: ((pid_t) -> Void)? = nil
     ) {
-        self.processes = processes
-        self.metricType = metricType
+        self.cpuProcesses = cpuProcesses
+        self.memoryProcesses = memoryProcesses.isEmpty ? cpuProcesses : memoryProcesses
         self.onQuitProcess = onQuitProcess
+        self._selectedMetric = State(initialValue: .cpu)
+    }
+
+    /// Backwards-compatible initializer for tests and single-metric scenarios.
+    public init(
+        processes: [ProcessSnapshot],
+        metricType: ProcessMetricType = .cpu,
+        onQuitProcess: ((pid_t) -> Void)? = nil
+    ) {
+        self.cpuProcesses = processes
+        self.memoryProcesses = processes
+        self.onQuitProcess = onQuitProcess
+        self._selectedMetric = State(initialValue: metricType)
+    }
+
+    /// Pool sorted by active metric.
+    public var currentPool: [ProcessSnapshot] {
+        switch selectedMetric {
+        case .cpu:
+            return cpuProcesses.sorted { $0.cpuFraction > $1.cpuFraction }
+        case .memory:
+            return memoryProcesses.sorted { $0.ramBytes > $1.ramBytes }
+        }
     }
 
     /// Evaluates category and search query filters.
     public var filteredProcesses: [ProcessSnapshot] {
-        processes.filter { proc in
+        currentPool.filter { proc in
             let matchesCategory = (selectedCategory == .user) ? proc.isUserApp : !proc.isUserApp
             guard matchesCategory else { return false }
             if searchText.isEmpty { return true }
@@ -45,8 +71,8 @@ public struct ProcessListView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xSmall) {
-            // Header Controls: Category Segmented Picker & Inline Search Toggle
-            HStack(spacing: DesignTokens.Spacing.xSmall) {
+            // Row 1: Category Picker & Search Pill
+            HStack(spacing: DesignTokens.Spacing.small) {
                 Picker("Category", selection: $selectedCategory) {
                     ForEach(ProcessCategory.allCases, id: \.self) { cat in
                         Text(cat.rawValue).tag(cat)
@@ -55,11 +81,11 @@ public struct ProcessListView: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .controlSize(.mini)
-                .frame(maxWidth: 190)
+                .frame(maxWidth: 165)
 
                 Spacer()
 
-                // Compact Search Input Field
+                // Streamlined Compact Search Input Pill
                 HStack(spacing: 4) {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 10))
@@ -68,7 +94,7 @@ public struct ProcessListView: View {
                     TextField("Filter...", text: $searchText)
                         .textFieldStyle(.plain)
                         .font(DesignTokens.Typography.caption)
-                        .frame(maxWidth: 80)
+                        .frame(maxWidth: 72)
 
                     if !searchText.isEmpty {
                         Button {
@@ -90,7 +116,29 @@ public struct ProcessListView: View {
                         .stroke(DesignTokens.Colors.borderHairline, lineWidth: 0.5)
                 )
             }
-            .padding(.top, 4)
+
+            // Row 2: Secondary Contextual Sort Row
+            HStack {
+                Text("PROCESS NAME")
+                    .font(DesignTokens.Typography.captionSecondary)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Picker("Sort Metric", selection: $selectedMetric) {
+                    Text("CPU").tag(ProcessMetricType.cpu)
+                    Text("RAM").tag(ProcessMetricType.memory)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .controlSize(.mini)
+                .frame(width: 86)
+            }
+            .padding(.top, 2)
+
+            Divider()
+                .overlay(DesignTokens.Colors.borderHairline)
+                .padding(.vertical, 1)
 
             // Process Rows Container
             let displayed = filteredProcesses
@@ -99,31 +147,32 @@ public struct ProcessListView: View {
                     .font(DesignTokens.Typography.caption)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 10)
+                    .padding(.vertical, 24)
             } else {
-                let visibleCount = isExpanded ? displayed.count : min(5, displayed.count)
+                let isSearching = !searchText.isEmpty
+                let visibleCount = (isSearching || isExpanded) ? displayed.count : min(6, displayed.count)
                 let itemsToShow = Array(displayed.prefix(visibleCount))
 
-                if isExpanded {
+                if isSearching || isExpanded {
                     ScrollView(.vertical, showsIndicators: true) {
                         LazyVStack(spacing: 2) {
                             ForEach(itemsToShow) { process in
                                 ProcessItemRow(
                                     process: process,
-                                    metricType: metricType,
+                                    metricType: selectedMetric,
                                     allowQuit: selectedCategory == .user,
                                     onQuit: onQuitProcess
                                 )
                             }
                         }
                     }
-                    .frame(maxHeight: 160)
+                    .frame(maxHeight: 220)
                 } else {
                     VStack(spacing: 2) {
                         ForEach(itemsToShow) { process in
                             ProcessItemRow(
                                 process: process,
-                                metricType: metricType,
+                                metricType: selectedMetric,
                                 allowQuit: selectedCategory == .user,
                                 onQuit: onQuitProcess
                             )
@@ -131,8 +180,8 @@ public struct ProcessListView: View {
                     }
                 }
 
-                // Progressive Disclosure Accordion Footer
-                if displayed.count > 5 {
+                // Progressive Disclosure Footer (only shown when not searching and > 6 items)
+                if !isSearching && displayed.count > 6 {
                     Button {
                         withAnimation(.spring(response: 0.35, dampingFraction: 1.0)) {
                             isExpanded.toggle()
@@ -141,12 +190,12 @@ public struct ProcessListView: View {
                         HStack(spacing: 4) {
                             Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                                 .font(.system(size: 9, weight: .semibold))
-                            Text(isExpanded ? "Show Top 5" : "Show All (\(displayed.count - 5) more)")
+                            Text(isExpanded ? "Show Top 6" : "Show More (\(displayed.count - 6) more)")
                                 .font(DesignTokens.Typography.captionSecondary)
                             Spacer()
                         }
                         .foregroundStyle(Color.accentColor)
-                        .padding(.top, 2)
+                        .padding(.top, 4)
                         .padding(.horizontal, 4)
                     }
                     .buttonStyle(.plain)
