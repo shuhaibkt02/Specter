@@ -114,6 +114,10 @@ struct StatsBarApp: App {
             }
             .padding(.horizontal, 1)
         }
-        .frame(maxHeight: DesignTokens.Geometry.popoverMaxHeight)
+        .frame(minHeight: 460, maxHeight: DesignTokens.Geometry.popoverMaxHeight)
+        .onAppear {
+            coordinator.isPopoverPresented = true
+            coordinator.tick()
+        }
     }
 }
