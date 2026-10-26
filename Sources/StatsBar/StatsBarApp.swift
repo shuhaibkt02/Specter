@@ -39,15 +39,32 @@ struct StatsBarApp: App {
                             .foregroundStyle(DesignTokens.Colors.normal)
                     }
 
-                    // Gear button to toggle settings (⌘,)
+                    // Settings / Back toggle (⌘,)
                     Button(action: { showingSettings.toggle() }) {
-                        Image(systemName: showingSettings ? "chevron.backward" : "gearshape")
-                            .font(.system(size: 13, weight: .medium))
-                            .frame(width: DesignTokens.Geometry.actionHitTarget, height: DesignTokens.Geometry.actionHitTarget)
-                            .contentShape(Rectangle())
+                        if showingSettings {
+                            HStack(spacing: 4) {
+                                Image(systemName: "chevron.backward")
+                                    .font(.system(size: 10, weight: .semibold))
+                                Text("Back")
+                                    .font(DesignTokens.Typography.caption)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.primary.opacity(0.06))
+                            .clipShape(RoundedRectangle(cornerRadius: 5))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 5)
+                                    .stroke(DesignTokens.Colors.borderHairline, lineWidth: 0.5)
+                            )
+                        } else {
+                            Image(systemName: "gearshape")
+                                .font(.system(size: 13, weight: .medium))
+                                .frame(width: DesignTokens.Geometry.actionHitTarget, height: DesignTokens.Geometry.actionHitTarget)
+                                .contentShape(Rectangle())
+                        }
                     }
                     .buttonStyle(.plain)
-                    .help(showingSettings ? "Back to Cockpit" : "Settings (⌘,)")
+                    .help(showingSettings ? "Back to Cockpit (⌘,)" : "Settings (⌘,)")
                     .keyboardShortcut(",", modifiers: .command)
 
                     // Quit Button (⌘Q)
@@ -73,7 +90,7 @@ struct StatsBarApp: App {
                         hasBattery: coordinator.currentBattery.hasBattery,
                         onDismiss: { showingSettings = false }
                     )
-                    .frame(maxWidth: 360)
+                    .frame(maxWidth: 480)
                     .frame(maxWidth: .infinity, alignment: .center)
                 } else {
                     cockpitView
