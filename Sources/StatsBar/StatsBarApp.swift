@@ -62,7 +62,6 @@ struct StatsBarApp: App {
                     .help("Quit StatsBar (⌘Q)")
                     .keyboardShortcut("q", modifiers: .command)
                 }
-                .padding(.horizontal, 4)
 
                 Divider()
                     .overlay(DesignTokens.Colors.borderHairline)
@@ -80,7 +79,8 @@ struct StatsBarApp: App {
                     cockpitView
                 }
             }
-            .padding(DesignTokens.Spacing.popoverPadding)
+            .padding(.horizontal, DesignTokens.Spacing.popoverPadding)
+            .padding(.vertical, DesignTokens.Spacing.popoverPadding)
             .frame(width: DesignTokens.Geometry.popoverTwoColumnWidth)
             .onAppear {
                 coordinator.isPopoverPresented = true

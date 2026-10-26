@@ -16,14 +16,14 @@ public enum DesignTokens {
         public static let interCardGap: CGFloat = 12
         public static let intraCardGap: CGFloat = 6
         public static let cardPadding: CGFloat = 14
-        public static let popoverPadding: CGFloat = 12
+        public static let popoverPadding: CGFloat = 14
     }
 
     public enum Geometry {
         public static let popoverWidth: CGFloat = 320
-        public static let popoverTwoColumnWidth: CGFloat = 590
-        public static let vitalsColumnWidth: CGFloat = 275
-        public static let inspectorColumnWidth: CGFloat = 303
+        public static let popoverTwoColumnWidth: CGFloat = 600
+        public static let vitalsColumnWidth: CGFloat = 270
+        public static let inspectorColumnWidth: CGFloat = 290
         public static let popoverMaxHeight: CGFloat = 560
         public static let cardCornerRadius: CGFloat = 10
         public static let popoverCornerRadius: CGFloat = 10
