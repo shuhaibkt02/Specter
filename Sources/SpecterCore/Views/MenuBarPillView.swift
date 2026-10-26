@@ -47,7 +47,7 @@ public struct MenuBarPillView: View {
             Text("Specter")
                 .font(DesignTokens.Typography.pill)
                 .monospacedDigit()
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(Self.accessibilityDescription(coordinator: coordinator, settings: settings))
         } else {
@@ -62,12 +62,12 @@ public struct MenuBarPillView: View {
 
     public func pillText(for active: [Segment]) -> Text {
         let dotColor: Color = coordinator.isPopoverPresented ? .accentColor : .secondary.opacity(0.5)
-        let dot = Text("● ").foregroundColor(dotColor)
+        let dot = Text("● ").foregroundStyle(dotColor)
         var result = dot
         for (index, segment) in active.enumerated() {
             let piece = segmentText(for: segment)
             if index > 0 {
-                let sep = Text(" │ ").foregroundColor(.secondary.opacity(0.4))
+                let sep = Text(" │ ").foregroundStyle(.secondary.opacity(0.4))
                 result = Text("\(result)\(sep)\(piece)")
             } else {
                 result = Text("\(result)\(piece)")
@@ -81,30 +81,30 @@ public struct MenuBarPillView: View {
         case .cpu:
             return Text("CPU \(coordinator.currentCPU.percentageString)")
                 .monospacedDigit()
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
 
         case .memory:
             let tint = Self.warningTint(for: Self.memoryWarningState(pressure: coordinator.currentMemory.pressure))
             return Text("MEM \(Self.formatPillMemory(coordinator.currentMemory.usedBytes))")
                 .monospacedDigit()
-                .foregroundColor(tint)
+                .foregroundStyle(tint)
 
         case .network:
             return Text("↓\(Self.formatPillNetwork(coordinator.currentNetwork.downloadBytesPerSecond))")
                 .monospacedDigit()
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
 
         case .disk:
             return Text("DISK \(Self.formatPillDisk(coordinator.currentDisk.usedBytes))")
                 .monospacedDigit()
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
 
         case .battery:
             let tint = Self.warningTint(for: Self.batteryWarningState(battery: coordinator.currentBattery))
             let bolt = coordinator.currentBattery.isCharging ? "⚡" : ""
             return Text("BAT \(coordinator.currentBattery.percentageString)\(bolt)")
                 .monospacedDigit()
-                .foregroundColor(tint)
+                .foregroundStyle(tint)
         }
     }
 

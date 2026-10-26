@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import Darwin
 import SpecterCore
 
 @main
@@ -7,6 +8,8 @@ struct SpecterApp: App {
     @State private var coordinator: TelemetryCoordinator
     @State private var settings = SettingsModel.shared
     @State private var showingSettings = false
+    @State private var processActionError: String?
+    @State private var closeConfirmation = ProcessCloseConfirmationModel()
 
     init() {
         NSApplication.shared.setActivationPolicy(.accessory)
@@ -99,6 +102,13 @@ struct SpecterApp: App {
             .padding(.horizontal, DesignTokens.Spacing.popoverPadding)
             .padding(.vertical, DesignTokens.Spacing.popoverPadding)
             .frame(width: DesignTokens.Geometry.popoverTwoColumnWidth)
+            .overlay {
+                if let request = closeConfirmation.request {
+                    closeConfirmationOverlay(request)
+                } else if let processActionError {
+                    processActionErrorOverlay(processActionError)
+                }
+            }
             .onAppear {
                 coordinator.isPopoverPresented = true
             }
@@ -130,10 +140,6 @@ struct SpecterApp: App {
             processInspectorColumn
                 .frame(width: DesignTokens.Geometry.inspectorColumnWidth)
         }
-        .onAppear {
-            coordinator.isPopoverPresented = true
-            coordinator.tick()
-        }
     }
 
     private var vitalsColumn: some View {
@@ -164,12 +170,13 @@ struct SpecterApp: App {
             }
 
             ProcessListView(
-                cpuProcesses: coordinator.topProcesses,
-                memoryProcesses: coordinator.topMemoryProcesses
-            ) { pid in
-                kill(pid, SIGTERM)
-            }
+                cpuProcesses: coordinator.allProcesses,
+                memoryProcesses: coordinator.allProcesses,
+                closeConfirmationModel: closeConfirmation,
+                onEndProcess: endProcess
+            )
         }
+
         .padding(DesignTokens.Spacing.cardPadding)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Geometry.cardCornerRadius))
@@ -177,6 +184,137 @@ struct SpecterApp: App {
             RoundedRectangle(cornerRadius: DesignTokens.Geometry.cardCornerRadius)
                 .stroke(DesignTokens.Colors.borderHairline, lineWidth: 1)
         )
+    }
+
+    private func closeConfirmationOverlay(
+        _ request: ProcessCloseConfirmationModel.Request
+    ) -> some View {
+        widgetModal {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.medium) {
+                Text(confirmationTitle(for: request))
+                    .font(DesignTokens.Typography.cardTitle)
+                Text(confirmationMessage(for: request))
+                    .font(DesignTokens.Typography.body)
+                    .foregroundStyle(.secondary)
+
+                HStack {
+                    Spacer()
+                    Button("Cancel") {
+                        closeConfirmation.cancel()
+                    }
+                    .keyboardShortcut(.cancelAction)
+
+                    Button(confirmationButtonTitle(for: request), role: .destructive) {
+                        closeConfirmation.confirm(onConfirm: confirmProcessAction)
+                    }
+                    .keyboardShortcut(.defaultAction)
+                }
+            }
+        }
+    }
+
+    private func processActionErrorOverlay(_ message: String) -> some View {
+        widgetModal {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.medium) {
+                Text("Process Action Status")
+                    .font(DesignTokens.Typography.cardTitle)
+                Text(message)
+                    .font(DesignTokens.Typography.body)
+                    .foregroundStyle(.secondary)
+
+                HStack {
+                    Spacer()
+                    Button("OK") {
+                        processActionError = nil
+                    }
+                    .keyboardShortcut(.defaultAction)
+                }
+            }
+        }
+    }
+
+    private func widgetModal<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        ZStack {
+            Color.black.opacity(0.22)
+
+            content()
+                .padding(DesignTokens.Spacing.large)
+                .frame(width: 340, alignment: .leading)
+                .background(.regularMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Geometry.cardCornerRadius))
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignTokens.Geometry.cardCornerRadius)
+                        .stroke(DesignTokens.Colors.borderHairline, lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.2), radius: 18, y: 8)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .transition(.opacity)
+        .zIndex(1)
+    }
+
+    private func confirmationTitle(for request: ProcessCloseConfirmationModel.Request) -> String {
+        switch request.target {
+        case .app: return "Close \(request.appName)?"
+        case .process: return "End \(request.appName)?"
+        }
+    }
+
+    private func confirmationMessage(for request: ProcessCloseConfirmationModel.Request) -> String {
+        switch request.target {
+        case .app: return "This asks the app to close normally."
+        case .process(let pid): return "This sends a normal termination request to PID \(pid)."
+        }
+    }
+
+    private func confirmationButtonTitle(for request: ProcessCloseConfirmationModel.Request) -> String {
+        switch request.target {
+        case .app: return "Close"
+        case .process: return "End"
+        }
+    }
+
+    private func confirmProcessAction(_ request: ProcessCloseConfirmationModel.Request) {
+        switch request.target {
+        case .app(let bundleIdentifier):
+            closeApp(bundleIdentifier: bundleIdentifier)
+        case .process(let pid):
+            _ = endProcess(pid: pid)
+        }
+    }
+
+    private func endProcess(pid: pid_t) -> Bool {
+        guard kill(pid, SIGTERM) == 0 else {
+            processActionError = "Could not end PID \(pid): \(String(cString: strerror(errno)))."
+            return false
+        }
+        return true
+    }
+
+    private func closeApp(bundleIdentifier: String) {
+        let groupPIDs = Set(
+            coordinator.allProcesses
+                .filter { $0.groupIdentifier == bundleIdentifier }
+                .map(\.id)
+        )
+        guard let application = NSRunningApplication
+            .runningApplications(withBundleIdentifier: bundleIdentifier)
+            .first(where: { groupPIDs.contains($0.processIdentifier) })
+        else {
+            processActionError = "macOS could not find the running app to request a normal close."
+            return
+        }
+        if !application.terminate() {
+            processActionError = "macOS did not accept the normal close request."
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            guard !application.isTerminated else { return }
+            let name = application.localizedName ?? bundleIdentifier
+            processActionError = "\(name) is still running after the close request. It may be running in the background."
+        }
     }
 
     private var diskMicroPill: some View {

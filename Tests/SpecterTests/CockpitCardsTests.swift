@@ -305,6 +305,40 @@ struct CockpitCardsTests {
         #expect(itemRowMem.metricString.contains("GB"))
     }
 
+    @Test("ProcessListView groups app processes and sums their metrics")
+    func testProcessListViewGroupsProcesses() {
+        let processes = [
+            ProcessSnapshot(
+                id: 501,
+                name: "Editor",
+                cpuFraction: 0.2,
+                ramBytes: 300,
+                groupIdentifier: "com.example.editor",
+                groupName: "Editor"
+            ),
+            ProcessSnapshot(
+                id: 502,
+                name: "Editor Helper",
+                cpuFraction: 0.1,
+                ramBytes: 200,
+                groupIdentifier: "com.example.editor",
+                groupName: "Editor"
+            ),
+            ProcessSnapshot(id: 503, name: "Terminal", cpuFraction: 0.05, ramBytes: 100)
+        ]
+
+        let list = ProcessListView(processes: processes)
+        let appGroup = list.filteredGroups.first { $0.id == "com.example.editor" }
+
+        #expect(list.filteredGroups.count == 2)
+        #expect(appGroup?.processes.count == 2)
+        #expect(appGroup?.formattedCPU == "30%")
+        #expect(appGroup?.ramBytes == 500)
+
+        let singleton = list.filteredGroups.first { $0.name == "Terminal" }
+        #expect(singleton?.processes.count == 1)
+    }
+
     @Test("Compact mode hides process list in CPU and Memory cards")
     func testCompactModeHidesProcesses() {
         let cpuCardCompact = CPUCardView(

@@ -62,7 +62,8 @@ struct TelemetryCoordinatorTests {
 
         // Process collector must now be invoked and state published
         #expect(mock.processSampleCount == 1)
-        #expect(coordinator.topProcesses == sampleProcesses)
+        #expect(coordinator.topProcesses == sampleProcesses.sorted { $0.cpuFraction > $1.cpuFraction })
+        #expect(coordinator.allProcesses == sampleProcesses)
     }
 
     @Test("Popover presentation adapts sampling interval between Tier 1 and Tier 2")

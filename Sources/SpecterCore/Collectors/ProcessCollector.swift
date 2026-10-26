@@ -5,11 +5,9 @@ import Darwin
 /// Runs in < 1ms across all active system PIDs without spawning child processes.
 public final class ProcessCollector: @unchecked Sendable {
     private var previousSamples: [pid_t: (cpuNanos: UInt64, timestamp: UInt64)] = [:]
+    private var appGroupCache: [String: (identifier: String, name: String)] = [:]
 
-    public init() {
-        // Prime initial sample so subsequent queries have baseline deltas
-        _ = sampleTopProcesses(limit: 5)
-    }
+    public init() {}
 
     /// Samples all active processes and returns top N by CPU consumption.
     public func sampleTopProcesses(limit: Int = 5) -> [ProcessSnapshot] {
@@ -21,15 +19,31 @@ public final class ProcessCollector: @unchecked Sendable {
         sampleProcesses(limit: limit).topMemory
     }
 
+    /// Samples every accessible process so callers can calculate complete group totals.
+    public func sampleAllProcesses() -> [ProcessSnapshot] {
+        collectSnapshots()
+    }
+
     /// Samples all active processes in a single Darwin libproc pass and returns top items by CPU and Memory.
     public func sampleProcesses(limit: Int = 15) -> (topCPU: [ProcessSnapshot], topMemory: [ProcessSnapshot]) {
+        let snapshots = collectSnapshots()
+        let cpuSorted = snapshots.sorted { $0.cpuFraction > $1.cpuFraction }
+        let memSorted = snapshots.sorted { $0.ramBytes > $1.ramBytes }
+
+        return (
+            topCPU: Array(cpuSorted.prefix(limit)),
+            topMemory: Array(memSorted.prefix(limit))
+        )
+    }
+
+    private func collectSnapshots() -> [ProcessSnapshot] {
         autoreleasepool {
             let count = proc_listallpids(nil, 0)
-            guard count > 0 else { return ([], []) }
+            guard count > 0 else { return [] }
 
             var pids = [pid_t](repeating: 0, count: Int(count))
             let actualCount = proc_listallpids(&pids, Int32(MemoryLayout<pid_t>.size * pids.count))
-            guard actualCount > 0 else { return ([], []) }
+            guard actualCount > 0 else { return [] }
 
             let now = DispatchTime.now().uptimeNanoseconds
             var currentSamples: [pid_t: (cpuNanos: UInt64, timestamp: UInt64)] = [:]
@@ -57,25 +71,21 @@ public final class ProcessCollector: @unchecked Sendable {
 
                 let isUser = Self.isUserProcess(pid: pid)
                 let name = Self.nameForPID(pid)
+                let appGroup = appGroupForPID(pid)
                 let snap = ProcessSnapshot(
                     id: pid,
                     name: name,
                     cpuFraction: fraction,
                     ramBytes: taskInfo.pti_resident_size,
-                    isUserApp: isUser
+                    isUserApp: isUser,
+                    groupIdentifier: appGroup?.identifier,
+                    groupName: appGroup?.name
                 )
                 snapshots.append(snap)
             }
 
             previousSamples = currentSamples
-
-            let cpuSorted = snapshots.sorted { $0.cpuFraction > $1.cpuFraction }
-            let memSorted = snapshots.sorted { $0.ramBytes > $1.ramBytes }
-
-            return (
-                topCPU: Array(cpuSorted.prefix(limit)),
-                topMemory: Array(memSorted.prefix(limit))
-            )
+            return snapshots
         }
     }
 
@@ -84,15 +94,26 @@ public final class ProcessCollector: @unchecked Sendable {
         var bsdInfo = proc_bsdinfo()
         let size = proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &bsdInfo, Int32(MemoryLayout<proc_bsdinfo>.size))
         guard size == MemoryLayout<proc_bsdinfo>.size else { return false }
-        if bsdInfo.pbi_uid < 500 { return false }
         var pathBuffer = [CChar](repeating: 0, count: 1024)
         let pathLen = proc_pidpath(pid, &pathBuffer, UInt32(pathBuffer.count))
-        guard pathLen > 0 else { return true }
-        let path = pathBuffer.withUnsafeBufferPointer { ptr in
+        let path = pathLen > 0 ? pathBuffer.withUnsafeBufferPointer { ptr in
             guard let base = ptr.baseAddress else { return "" }
             return String(cString: base)
-        }
-        if path.hasPrefix("/System/") || path.hasPrefix("/usr/") || path.hasPrefix("/sbin/") {
+        } : nil
+        return isUserProcess(uid: bsdInfo.pbi_uid, executablePath: path)
+    }
+
+    static func isUserProcess(uid: uid_t, executablePath: String?) -> Bool {
+        guard uid >= 500 else { return false }
+        guard let executablePath else { return true }
+        let systemPathPrefixes = [
+            "/System/",
+            "/usr/",
+            "/sbin/",
+            "/Library/Apple/",
+            "/Library/System/"
+        ]
+        if systemPathPrefixes.contains(where: executablePath.hasPrefix) {
             return false
         }
         return true
@@ -110,5 +131,30 @@ public final class ProcessCollector: @unchecked Sendable {
             if !name.isEmpty { return name }
         }
         return "PID \(pid)"
+    }
+
+    private func appGroupForPID(_ pid: pid_t) -> (identifier: String, name: String)? {
+        var pathBuffer = [CChar](repeating: 0, count: 4_096)
+        let pathLength = proc_pidpath(pid, &pathBuffer, UInt32(pathBuffer.count))
+        guard pathLength > 0 else { return nil }
+        let path = pathBuffer.withUnsafeBufferPointer { buffer in
+            guard let base = buffer.baseAddress else { return "" }
+            return String(cString: base)
+        }
+        let components = URL(fileURLWithPath: path).standardizedFileURL.pathComponents
+        guard let appIndex = components.firstIndex(where: { $0.hasSuffix(".app") }) else { return nil }
+        let appPath = NSString.path(withComponents: Array(components.prefix(appIndex + 1)))
+        if let cachedGroup = appGroupCache[appPath] {
+            return cachedGroup
+        }
+        let appURL = URL(fileURLWithPath: appPath)
+        let bundle = Bundle(url: appURL)
+        let identifier = bundle?.bundleIdentifier ?? appURL.path
+        let name = bundle?.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
+            ?? bundle?.object(forInfoDictionaryKey: "CFBundleName") as? String
+            ?? appURL.deletingPathExtension().lastPathComponent
+        let appGroup = (identifier, name)
+        appGroupCache[appPath] = appGroup
+        return appGroup
     }
 }

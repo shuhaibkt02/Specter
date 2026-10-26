@@ -29,8 +29,10 @@ echo "🔏 Code signing (Ad-Hoc / Lifelong)..."
 codesign --force --deep --sign - "${APP_BUNDLE}"
 
 echo "🚀 Installing to /Applications..."
-# Terminate existing instance if currently running
-killall "${APP_NAME}" 2>/dev/null || true
+# Terminate existing instances by exact process name.
+while IFS= read -r pid; do
+    kill "${pid}" 2>/dev/null || true
+done < <(pgrep -x "${APP_NAME}" || true)
 
 # Replace old version in /Applications
 rm -rf "${INSTALL_DEST}"

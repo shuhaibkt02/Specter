@@ -10,11 +10,16 @@ public protocol TelemetryProviding: Sendable {
     func sampleAppleSilicon() -> AppleSiliconStats
     func sampleTopProcesses(limit: Int) -> [ProcessSnapshot]
     func sampleTopMemoryProcesses(limit: Int) -> [ProcessSnapshot]
+    func sampleAllProcesses() -> [ProcessSnapshot]
 }
 
 extension TelemetryProviding {
     public func sampleTopMemoryProcesses(limit: Int) -> [ProcessSnapshot] {
         []
+    }
+
+    public func sampleAllProcesses() -> [ProcessSnapshot] {
+        sampleTopProcesses(limit: Int.max)
     }
 }
 
@@ -96,5 +101,10 @@ public final class MockTelemetryProvider: TelemetryProviding, @unchecked Sendabl
     public func sampleTopMemoryProcesses(limit: Int) -> [ProcessSnapshot] {
         memoryProcessSampleCount += 1
         return Array(memoryProcessesToReturn.prefix(limit))
+    }
+
+    public func sampleAllProcesses() -> [ProcessSnapshot] {
+        processSampleCount += 1
+        return processesToReturn
     }
 }

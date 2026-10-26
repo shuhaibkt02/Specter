@@ -7,19 +7,25 @@ public struct ProcessSnapshot: Identifiable, Sendable, Equatable {
     public let cpuFraction: Double
     public let ramBytes: UInt64
     public let isUserApp: Bool
+    public let groupIdentifier: String?
+    public let groupName: String?
 
     public init(
         id: pid_t,
         name: String,
         cpuFraction: Double,
         ramBytes: UInt64 = 0,
-        isUserApp: Bool = true
+        isUserApp: Bool = true,
+        groupIdentifier: String? = nil,
+        groupName: String? = nil
     ) {
         self.id = id
         self.name = name
         self.cpuFraction = max(cpuFraction, 0.0)
         self.ramBytes = ramBytes
         self.isUserApp = isUserApp
+        self.groupIdentifier = groupIdentifier
+        self.groupName = groupName
     }
 
     /// User-friendly percentage integer (e.g. "15%").

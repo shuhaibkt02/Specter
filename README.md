@@ -8,7 +8,7 @@ Specter is an ultra-lightweight macOS menu bar system telemetry cockpit built wi
 - **Direct Darwin Kernel Telemetry**: Queries Mach kernel host statistics, `libproc`, BSD sysctls, and IOKit in-process (< 1ms polling, zero child processes or external daemons).
 - **Adaptive Two-Tier Polling**: 1s live sampling while the cockpit is open; drops to customizable background rates (1s–3s) when closed with process queries completely suspended.
 - **Hardware Micro-Pills**: Glanceable storage and battery status directly in the header with rich hover tooltips.
-- **Unified Process Inspector**: Filter between User Applications and System Daemons, sort by CPU or RAM, search in real-time, and safely terminate processes with 2-stage confirmation.
+- **Unified Process Inspector**: Filter between User Applications and System Daemons, sort by CPU or RAM, search in real-time, expand app groups to inspect helper processes, request normal app quits, and end individual processes with confirmation.
 - **Native macOS Settings**: Configurable menu bar segments, refresh rate, temperature units, and startup preferences.
 
 ## Requirements
