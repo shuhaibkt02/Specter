@@ -4,24 +4,31 @@ import SwiftUI
 /// Displays live download and upload transfer rates, throughput sparkline,
 /// and the active physical interface and IP label.
 public struct NetworkCardView: View {
+    private let coordinator: TelemetryCoordinator?
     public let network: NetworkStats
     public let history: [Double]
 
     public init(network: NetworkStats, history: [Double] = []) {
+        self.coordinator = nil
         self.network = network
         self.history = history
     }
 
     public init(coordinator: TelemetryCoordinator) {
-        self.init(network: coordinator.currentNetwork, history: coordinator.networkHistory)
+        self.coordinator = coordinator
+        self.network = coordinator.currentNetwork
+        self.history = coordinator.networkHistory
     }
 
+    private var activeNetwork: NetworkStats { coordinator?.currentNetwork ?? network }
+    private var activeHistory: [Double] { coordinator?.networkHistory ?? history }
+
     public var liveValue: String {
-        "↓ \(network.formattedDownload)  ↑ \(network.formattedUpload)"
+        "↓ \(activeNetwork.formattedDownload)  ↑ \(activeNetwork.formattedUpload)"
     }
 
     public var interfaceLabel: String {
-        network.breakdownDescription
+        activeNetwork.breakdownDescription
     }
 
     public var body: some View {
@@ -29,7 +36,7 @@ public struct NetworkCardView: View {
             title: "Network",
             value: liveValue,
             sparkline: {
-                SparklineView(values: history)
+                SparklineView(values: activeHistory)
             },
             breakdown: {
                 Text(interfaceLabel)

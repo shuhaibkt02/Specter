@@ -4,29 +4,34 @@ import SwiftUI
 /// Displays battery percentage with optional charging glyph, charging state text,
 /// capacity track bar, and health/condition/time remaining breakdown.
 public struct BatteryCardView: View {
+    private let coordinator: TelemetryCoordinator?
     public let battery: BatteryStats
 
     public init(battery: BatteryStats) {
+        self.coordinator = nil
         self.battery = battery
     }
 
     public init(coordinator: TelemetryCoordinator) {
-        self.init(battery: coordinator.currentBattery)
+        self.coordinator = coordinator
+        self.battery = coordinator.currentBattery
     }
 
+    private var activeBattery: BatteryStats { coordinator?.currentBattery ?? battery }
+
     public var liveValue: String {
-        "\(battery.percentageString)\(battery.isCharging ? " ⚡" : "")"
+        "\(activeBattery.percentageString)\(activeBattery.isCharging ? " ⚡" : "")"
     }
 
     public var statusText: String {
-        battery.chargingStatusDescription
+        activeBattery.chargingStatusDescription
     }
 
     public var statusDotColor: Color? {
-        guard battery.hasBattery else { return nil }
-        if !battery.isCharging && battery.capacityFraction <= 0.10 {
+        guard activeBattery.hasBattery else { return nil }
+        if !activeBattery.isCharging && activeBattery.capacityFraction <= 0.10 {
             return DesignTokens.Colors.critical
-        } else if !battery.isCharging && battery.capacityFraction <= 0.20 {
+        } else if !activeBattery.isCharging && activeBattery.capacityFraction <= 0.20 {
             return DesignTokens.Colors.warning
         }
         return nil
@@ -34,13 +39,13 @@ public struct BatteryCardView: View {
 
     public var breakdownSummary: String {
         var parts: [String] = []
-        if let health = battery.healthPercentage {
+        if let health = activeBattery.healthPercentage {
             parts.append("\(health)% health")
         }
-        if let condition = battery.condition, !condition.isEmpty {
+        if let condition = activeBattery.condition, !condition.isEmpty {
             parts.append(condition)
         }
-        if let timeRemaining = battery.formattedTimeRemaining {
+        if let timeRemaining = activeBattery.formattedTimeRemaining {
             parts.append(timeRemaining)
         }
         return parts.joined(separator: " · ")
@@ -54,8 +59,8 @@ public struct BatteryCardView: View {
             statusText: statusText,
             sparkline: {
                 TrackBarView(
-                    fraction: battery.capacityFraction,
-                    fillColor: (!battery.isCharging && battery.capacityFraction <= 0.10) ? DesignTokens.Colors.critical : .accentColor
+                    fraction: activeBattery.capacityFraction,
+                    fillColor: (!activeBattery.isCharging && activeBattery.capacityFraction <= 0.10) ? DesignTokens.Colors.critical : .accentColor
                 )
             },
             breakdown: {

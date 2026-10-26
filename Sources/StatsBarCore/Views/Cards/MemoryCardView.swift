@@ -4,24 +4,31 @@ import SwiftUI
 /// Displays physical memory usage, pressure level status indicator dot + text,
 /// 60s memory sparkline, Wired/Active/Compressed/Cached breakdown, and Swap usage.
 public struct MemoryCardView: View {
+    private let coordinator: TelemetryCoordinator?
     public let memory: MemoryStats
     public let history: [Double]
 
     public init(memory: MemoryStats, history: [Double] = []) {
+        self.coordinator = nil
         self.memory = memory
         self.history = history
     }
 
     public init(coordinator: TelemetryCoordinator) {
-        self.init(memory: coordinator.currentMemory, history: coordinator.memoryHistory)
+        self.coordinator = coordinator
+        self.memory = coordinator.currentMemory
+        self.history = coordinator.memoryHistory
     }
 
+    private var activeMemory: MemoryStats { coordinator?.currentMemory ?? memory }
+    private var activeHistory: [Double] { coordinator?.memoryHistory ?? history }
+
     public var liveValue: String {
-        "\(memory.formattedUsedGB) / \(memory.formattedTotalGB)"
+        "\(activeMemory.formattedUsedGB) / \(activeMemory.formattedTotalGB)"
     }
 
     public var statusDotColor: Color {
-        switch memory.pressure {
+        switch activeMemory.pressure {
         case .normal: return DesignTokens.Colors.normal
         case .warning: return DesignTokens.Colors.warning
         case .critical: return DesignTokens.Colors.critical
@@ -29,7 +36,7 @@ public struct MemoryCardView: View {
     }
 
     public var statusText: String {
-        switch memory.pressure {
+        switch activeMemory.pressure {
         case .normal: return "Normal"
         case .warning: return "Warning"
         case .critical: return "Critical"
@@ -37,11 +44,11 @@ public struct MemoryCardView: View {
     }
 
     public var breakdownSummary: String {
-        "Wired \(memory.formattedWiredGB) · Active \(memory.formattedActiveGB) · Compressed \(memory.formattedCompressedGB) · Cached \(memory.formattedCachedGB)"
+        "Wired \(activeMemory.formattedWiredGB) · Active \(activeMemory.formattedActiveGB) · Compressed \(activeMemory.formattedCompressedGB) · Cached \(activeMemory.formattedCachedGB)"
     }
 
     public var swapSummary: String {
-        "Swap \(memory.swap.usedBytes == 0 ? "0 B" : memory.swap.formattedUsedGB)"
+        "Swap \(activeMemory.swap.usedBytes == 0 ? "0 B" : activeMemory.swap.formattedUsedGB)"
     }
 
     public var body: some View {
@@ -51,19 +58,18 @@ public struct MemoryCardView: View {
             statusDotColor: statusDotColor,
             statusText: statusText,
             sparkline: {
-                SparklineView(values: history)
+                SparklineView(values: activeHistory)
             },
             breakdown: {
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxSmall) {
                     Text(breakdownSummary)
                         .font(DesignTokens.Typography.caption)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
 
                     Text(swapSummary)
                         .font(DesignTokens.Typography.caption)
                         .foregroundStyle(.secondary)
+                        .monospacedDigit()
                 }
             }
         )

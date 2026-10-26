@@ -4,26 +4,31 @@ import SwiftUI
 /// Displays storage capacity usage, a storage utilization track bar,
 /// and live block I/O read and write throughput.
 public struct DiskCardView: View {
+    private let coordinator: TelemetryCoordinator?
     public let disk: DiskStats
 
     public init(disk: DiskStats) {
+        self.coordinator = nil
         self.disk = disk
     }
 
     public init(coordinator: TelemetryCoordinator) {
-        self.init(disk: coordinator.currentDisk)
+        self.coordinator = coordinator
+        self.disk = coordinator.currentDisk
     }
 
+    private var activeDisk: DiskStats { coordinator?.currentDisk ?? disk }
+
     public var liveValue: String {
-        "\(disk.formattedUsedGB) / \(disk.formattedTotalGB)"
+        "\(activeDisk.formattedUsedGB) / \(activeDisk.formattedTotalGB)"
     }
 
     public var capacityFraction: Double {
-        disk.usedFraction
+        activeDisk.usedFraction
     }
 
     public var throughputSummary: String {
-        "Read \(disk.formattedReadMBs) · Write \(disk.formattedWriteMBs)"
+        "Read \(activeDisk.formattedReadMBs) · Write \(activeDisk.formattedWriteMBs)"
     }
 
     public var body: some View {

@@ -12,7 +12,9 @@ struct StatsBarApp: App {
         NSApplication.shared.setActivationPolicy(.accessory)
         let provider = SystemTelemetryProvider()
         let settings = SettingsModel.shared
-        _coordinator = State(initialValue: TelemetryCoordinator(provider: provider, backgroundInterval: settings.backgroundInterval))
+        let coord = TelemetryCoordinator(provider: provider, backgroundInterval: settings.backgroundInterval)
+        coord.tick() // Prime live metrics immediately on launch
+        _coordinator = State(initialValue: coord)
     }
 
     var body: some Scene {
@@ -77,6 +79,11 @@ struct StatsBarApp: App {
             .onChange(of: settings.backgroundInterval) { _, newInterval in
                 coordinator.backgroundInterval = newInterval
             }
+            .onChange(of: settings.showCPU) { _, _ in coordinator.tick() }
+            .onChange(of: settings.showMemory) { _, _ in coordinator.tick() }
+            .onChange(of: settings.showNetwork) { _, _ in coordinator.tick() }
+            .onChange(of: settings.showDisk) { _, _ in coordinator.tick() }
+            .onChange(of: settings.showBattery) { _, _ in coordinator.tick() }
         } label: {
             MenuBarPillView(coordinator: coordinator, settings: settings)
         }

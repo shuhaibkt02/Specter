@@ -4,6 +4,7 @@ import SwiftUI
 /// Displays aggregate CPU utilization, 60s sparkline, P/E core clusters, SoC temperature,
 /// and top 5 processes with hover selection, PID tooltips, and safe quit confirmation.
 public struct CPUCardView: View {
+    private let coordinator: TelemetryCoordinator?
     public let cpu: CPUStats
     public let history: [Double]
     public let silicon: AppleSiliconStats
@@ -17,6 +18,7 @@ public struct CPUCardView: View {
         topProcesses: [ProcessSnapshot] = [],
         onQuitProcess: ((pid_t) -> Void)? = nil
     ) {
+        self.coordinator = nil
         self.cpu = cpu
         self.history = history
         self.silicon = silicon
@@ -25,21 +27,26 @@ public struct CPUCardView: View {
     }
 
     public init(coordinator: TelemetryCoordinator, onQuitProcess: ((pid_t) -> Void)? = nil) {
-        self.init(
-            cpu: coordinator.currentCPU,
-            history: coordinator.cpuHistory,
-            silicon: coordinator.currentAppleSilicon,
-            topProcesses: coordinator.topProcesses,
-            onQuitProcess: onQuitProcess
-        )
+        self.coordinator = coordinator
+        self.cpu = coordinator.currentCPU
+        self.history = coordinator.cpuHistory
+        self.silicon = coordinator.currentAppleSilicon
+        self.topProcesses = coordinator.topProcesses
+        self.onQuitProcess = onQuitProcess
     }
 
+    // Dynamic properties observing coordinator when present, falling back to static snapshots for tests
+    private var activeCPU: CPUStats { coordinator?.currentCPU ?? cpu }
+    private var activeHistory: [Double] { coordinator?.cpuHistory ?? history }
+    private var activeSilicon: AppleSiliconStats { coordinator?.currentAppleSilicon ?? silicon }
+    private var activeProcesses: [ProcessSnapshot] { coordinator?.topProcesses ?? topProcesses }
+
     public var liveValue: String {
-        cpu.percentageString
+        activeCPU.percentageString
     }
 
     public var formattedTemperature: String {
-        silicon.formattedTemperature
+        activeSilicon.formattedTemperature
     }
 
     public var body: some View {
@@ -47,7 +54,7 @@ public struct CPUCardView: View {
             title: "CPU",
             value: liveValue,
             sparkline: {
-                SparklineView(values: history)
+                SparklineView(values: activeHistory)
             },
             breakdown: {
                 breakdownContent
@@ -60,24 +67,24 @@ public struct CPUCardView: View {
 
     @ViewBuilder
     private var breakdownContent: some View {
-        let hasPCores = silicon.pCoreCount > 0
-        let hasECores = silicon.eCoreCount > 0
-        let hasTemp = silicon.socTemperatureCelsius != nil
+        let hasPCores = activeSilicon.pCoreCount > 0
+        let hasECores = activeSilicon.eCoreCount > 0
+        let hasTemp = activeSilicon.socTemperatureCelsius != nil
 
         if hasPCores || hasECores || hasTemp {
             VStack(spacing: DesignTokens.Spacing.xSmall) {
                 if hasPCores {
                     coreTrackRow(
                         label: "P-Cores",
-                        fraction: silicon.pCoreUsageFraction,
-                        percentText: "\(Int((silicon.pCoreUsageFraction * 100).rounded()))%"
+                        fraction: activeSilicon.pCoreUsageFraction,
+                        percentText: "\(Int((activeSilicon.pCoreUsageFraction * 100).rounded()))%"
                     )
                 }
                 if hasECores {
                     coreTrackRow(
                         label: "E-Cores",
-                        fraction: silicon.eCoreUsageFraction,
-                        percentText: "\(Int((silicon.eCoreUsageFraction * 100).rounded()))%"
+                        fraction: activeSilicon.eCoreUsageFraction,
+                        percentText: "\(Int((activeSilicon.eCoreUsageFraction * 100).rounded()))%"
                     )
                 }
                 if hasTemp {
@@ -86,7 +93,7 @@ public struct CPUCardView: View {
                             .font(DesignTokens.Typography.caption)
                             .foregroundStyle(.secondary)
                         Spacer()
-                        Text(silicon.formattedTemperature)
+                        Text(activeSilicon.formattedTemperature)
                             .font(DesignTokens.Typography.caption)
                             .monospacedDigit()
                             .foregroundStyle(.secondary)
@@ -122,7 +129,7 @@ public struct CPUCardView: View {
                 .textCase(.uppercase)
                 .padding(.top, 2)
 
-            if topProcesses.isEmpty {
+            if activeProcesses.isEmpty {
                 // Tier-2 skeleton rows per Doc 07 (zero-flicker reserved space)
                 ForEach(0..<5, id: \.self) { _ in
                     HStack {
@@ -134,10 +141,10 @@ public struct CPUCardView: View {
                             .fill(DesignTokens.Colors.trackBackground)
                             .frame(width: 32, height: 11)
                     }
-                    .frame(height: 20)
+                    .frame(height: 24)
                 }
             } else {
-                ForEach(topProcesses.prefix(5)) { process in
+                ForEach(activeProcesses.prefix(5)) { process in
                     ProcessRowView(process: process) { pid in
                         onQuitProcess?(pid)
                     }
@@ -148,7 +155,7 @@ public struct CPUCardView: View {
 }
 
 /// Interactive process list row with hover highlight, PID badge, right-aligned percentage,
-/// and safe quit confirmation affordance.
+/// and safe quit confirmation affordance complying with Fitts's and Jakob's Laws.
 public struct ProcessRowView: View {
     public let process: ProcessSnapshot
     public var onQuit: ((pid_t) -> Void)?
@@ -190,32 +197,40 @@ public struct ProcessRowView: View {
             if isHovered {
                 if isConfirmingQuit {
                     Button {
-                        onQuit?(process.id)
-                        isConfirmingQuit = false
+                        withAnimation(.easeOut(duration: 0.15)) {
+                            onQuit?(process.id)
+                            isConfirmingQuit = false
+                        }
                     } label: {
                         Text("Quit?")
-                            .font(DesignTokens.Typography.captionSecondary)
-                            .foregroundStyle(DesignTokens.Colors.critical)
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(Color.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(DesignTokens.Colors.critical)
+                            .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
+                    .frame(height: DesignTokens.Geometry.actionHitTarget)
                 } else {
                     Button {
                         isConfirmingQuit = true
                     } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 10, weight: .bold))
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(.secondary)
-                            .frame(width: DesignTokens.Geometry.minHitTarget, height: DesignTokens.Geometry.minHitTarget)
+                            .frame(width: DesignTokens.Geometry.actionHitTarget, height: DesignTokens.Geometry.actionHitTarget)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .help("Force quit \(process.name) (PID: \(process.id))")
                 }
             }
         }
-        .frame(height: 22)
-        .padding(.horizontal, 4)
+        .frame(height: 24)
+        .padding(.horizontal, 6)
         .background(
-            RoundedRectangle(cornerRadius: 4)
+            RoundedRectangle(cornerRadius: 6)
                 .fill(isHovered ? DesignTokens.Colors.hoverBackground : Color.clear)
         )
         .onHover { hovering in
