@@ -160,56 +160,23 @@ public struct ProcessListView: View {
                 Text(searchText.isEmpty ? "No active \(selectedCategory.rawValue.lowercased())" : "No matching processes")
                     .font(DesignTokens.Typography.caption)
                     .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                     .padding(.vertical, 24)
             } else {
-                let searching = !searchText.isEmpty
-                let shownGroups = Array(groups.prefix(searching || isExpanded ? groups.count : 6))
-                if searching || isExpanded {
-                    ScrollView(.vertical, showsIndicators: true) {
-                        LazyVStack(spacing: 2) {
-                            ForEach(shownGroups) { group in
-                                groupRow(group)
-                            }
-                        }
-                    }
-                    .frame(maxHeight: 220)
-                    .onHover { isHovering in
-                        hoveredGroups = isHovering ? filteredGroups : nil
-                    }
-                } else {
-                    VStack(spacing: 2) {
-                        ForEach(shownGroups) { group in
+                ScrollView(.vertical, showsIndicators: true) {
+                    LazyVStack(spacing: 2) {
+                        ForEach(groups) { group in
                             groupRow(group)
                         }
                     }
-                    .onHover { isHovering in
-                        hoveredGroups = isHovering ? filteredGroups : nil
-                    }
                 }
-
-                if !searching && groups.count > 6 {
-                    Button {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 1.0)) {
-                            isExpanded.toggle()
-                        }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                                .font(.system(size: 9, weight: .semibold))
-                            Text(isExpanded ? "Show Top 6" : "Show More (\(groups.count - 6) more)")
-                                .font(DesignTokens.Typography.captionSecondary)
-                            Spacer()
-                        }
-                        .foregroundStyle(Color.accentColor)
-                        .padding(.top, 4)
-                        .padding(.horizontal, 4)
-                    }
-                    .buttonStyle(.plain)
+                .frame(maxHeight: .infinity)
+                .onHover { isHovering in
+                    hoveredGroups = isHovering ? filteredGroups : nil
                 }
             }
-
         }
+        .frame(maxHeight: .infinity, alignment: .topLeading)
     }
 
     @ViewBuilder
@@ -253,10 +220,12 @@ public struct ProcessListView: View {
     }
 
     private func toggleGroup(_ id: String) {
-        if expandedGroups.contains(id) {
-            expandedGroups.remove(id)
-        } else {
-            expandedGroups.insert(id)
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+            if expandedGroups.contains(id) {
+                expandedGroups.remove(id)
+            } else {
+                expandedGroups.insert(id)
+            }
         }
     }
 }
@@ -277,29 +246,33 @@ private struct ProcessGroupRow: View {
     var body: some View {
         VStack(spacing: 2) {
             HStack(spacing: 5) {
-                Button(action: onToggle) {
+                // Interactive group header: tapping chevron, name, count, or metric toggles expansion
+                HStack(spacing: 5) {
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                         .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(.secondary)
                         .frame(width: 12)
+
+                    Text(group.name)
+                        .font(.body)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Text("\(group.processes.count) \(group.processes.count == 1 ? "process" : "processes")")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+
+                    Text(metricType == .cpu ? group.formattedCPU : group.formattedRAM)
+                        .font(.body)
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .frame(minWidth: 48, alignment: .trailing)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(isExpanded ? "Collapse \(group.name)" : "Expand \(group.name)")
-
-                Text(group.name)
-                    .font(.body)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                Text("\(group.processes.count) \(group.processes.count == 1 ? "process" : "processes")")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-
-                Text(metricType == .cpu ? group.formattedCPU : group.formattedRAM)
-                    .font(.body)
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-                    .frame(minWidth: 48, alignment: .trailing)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    onToggle()
+                }
 
                 if allowQuit && onRequestClose != nil && group.processes.contains(where: { $0.groupIdentifier != nil }) {
                     Button("Close") {
@@ -337,6 +310,7 @@ private struct ProcessGroupRow: View {
                         .padding(.leading, 14)
                     }
                 }
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
     }

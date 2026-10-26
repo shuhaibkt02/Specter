@@ -10,6 +10,7 @@ struct SpecterApp: App {
     @State private var showingSettings = false
     @State private var processActionError: String?
     @State private var closeConfirmation = ProcessCloseConfirmationModel()
+    @State private var vitalsColumnHeight: CGFloat? = nil
 
     init() {
         NSApplication.shared.setActivationPolicy(.accessory)
@@ -135,10 +136,21 @@ struct SpecterApp: App {
             // Column 1: System Vitals
             vitalsColumn
                 .frame(width: DesignTokens.Geometry.vitalsColumnWidth)
+                .background(
+                    GeometryReader { geo in
+                        Color.clear.preference(key: VitalsHeightPreferenceKey.self, value: geo.size.height)
+                    }
+                )
 
             // Column 2: Process Inspector
             processInspectorColumn
                 .frame(width: DesignTokens.Geometry.inspectorColumnWidth)
+                .frame(height: vitalsColumnHeight)
+        }
+        .onPreferenceChange(VitalsHeightPreferenceKey.self) { newHeight in
+            if newHeight > 0 && abs((vitalsColumnHeight ?? 0) - newHeight) > 1 {
+                vitalsColumnHeight = newHeight
+            }
         }
     }
 
@@ -176,8 +188,8 @@ struct SpecterApp: App {
                 onEndProcess: endProcess
             )
         }
-
         .padding(DesignTokens.Spacing.cardPadding)
+        .frame(maxHeight: .infinity, alignment: .topLeading)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Geometry.cardCornerRadius))
         .overlay(
@@ -372,5 +384,12 @@ struct SpecterApp: App {
             )
             .help(tooltip)
         }
+    }
+}
+
+private struct VitalsHeightPreferenceKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }
