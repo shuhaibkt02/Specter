@@ -43,7 +43,7 @@ public final class TelemetryCoordinator {
 
     private let provider: TelemetryProviding
     private var timer: DispatchSourceTimer?
-    private let queue = DispatchQueue(label: "com.personal.StatsBar.timerQueue", qos: .utility)
+    private let queue = DispatchQueue(label: "com.personal.Specter.timerQueue", qos: .utility)
 
     public init(provider: TelemetryProviding, backgroundInterval: Double = 2.0, autoStart: Bool = true) {
         self.provider = provider

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-APP_NAME="StatsBar"
+APP_NAME="Specter"
 BUILD_DIR=".build/release"
 APP_BUNDLE="${APP_NAME}.app"
 CONTENTS_DIR="${APP_BUNDLE}/Contents"

@@ -44,7 +44,7 @@ public struct MenuBarPillView: View {
     public var body: some View {
         let active = Self.activeSegments(settings: settings, hasBattery: coordinator.currentBattery.hasBattery)
         if active.isEmpty {
-            Text("StatsBar")
+            Text("Specter")
                 .font(DesignTokens.Typography.pill)
                 .monospacedDigit()
                 .foregroundColor(.secondary)
@@ -290,7 +290,7 @@ public struct MenuBarPillView: View {
         }
 
         if segments.isEmpty {
-            return "StatsBar"
+            return "Specter"
         }
         return segments.joined(separator: ", ")
     }

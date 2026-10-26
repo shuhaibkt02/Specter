@@ -1,6 +1,6 @@
 import Testing
 import SwiftUI
-@testable import StatsBarCore
+@testable import SpecterCore
 
 @Suite("MenuBarPill Tests")
 @MainActor
@@ -193,7 +193,7 @@ struct MenuBarPillTests {
             cpu: CPUStats(), memory: MemoryStats(), network: NetworkStats(), disk: DiskStats(), battery: BatteryStats(), settings: settings
         )
 
-        #expect(label == "StatsBar")
+        #expect(label == "Specter")
     }
 
     @Test("VoiceOver network formatting across unit magnitudes")

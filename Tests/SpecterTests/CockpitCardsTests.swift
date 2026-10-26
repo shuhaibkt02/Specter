@@ -1,6 +1,6 @@
 import Testing
 import SwiftUI
-import StatsBarCore
+import SpecterCore
 
 @Suite("CockpitCards Tests")
 @MainActor

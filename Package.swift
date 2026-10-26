@@ -2,25 +2,25 @@
 import PackageDescription
 
 let package = Package(
-    name: "StatsBar",
+    name: "Specter",
     platforms: [
         .macOS("26.0")
     ],
     products: [
-        .library(name: "StatsBarCore", targets: ["StatsBarCore"]),
-        .executable(name: "StatsBar", targets: ["StatsBar"])
+        .library(name: "SpecterCore", targets: ["SpecterCore"]),
+        .executable(name: "Specter", targets: ["Specter"])
     ],
     targets: [
         .target(
-            name: "StatsBarCore"
+            name: "SpecterCore"
         ),
         .executableTarget(
-            name: "StatsBar",
-            dependencies: ["StatsBarCore"]
+            name: "Specter",
+            dependencies: ["SpecterCore"]
         ),
         .testTarget(
-            name: "StatsBarTests",
-            dependencies: ["StatsBarCore"]
+            name: "SpecterTests",
+            dependencies: ["SpecterCore"]
         )
     ]
 )

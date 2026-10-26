@@ -1,7 +1,7 @@
 import Testing
 import Foundation
 import Darwin
-import StatsBarCore
+import SpecterCore
 
 @Suite("MemoryCollector Tests")
 struct MemoryCollectorTests {

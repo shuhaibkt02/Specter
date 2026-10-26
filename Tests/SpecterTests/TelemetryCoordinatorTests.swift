@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-import StatsBarCore
+import SpecterCore
 
 @Suite("TelemetryCoordinator Tests")
 @MainActor

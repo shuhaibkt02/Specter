@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleIdentifier</key>
-    <string>com.personal.StatsBar</string>
+    <string>com.personal.Specter</string>
     <key>CFBundleName</key>
-    <string>StatsBar</string>
+    <string>Specter</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>

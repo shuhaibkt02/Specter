@@ -1,5 +1,5 @@
 import Testing
-import StatsBarCore
+import SpecterCore
 
 @Suite("Domain Model Tests")
 struct ModelTests {

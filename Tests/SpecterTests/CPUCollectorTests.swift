@@ -1,6 +1,6 @@
 import Testing
 import Darwin
-import StatsBarCore
+import SpecterCore
 
 @Suite("CPUCollector Tests")
 struct CPUCollectorTests {

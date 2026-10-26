@@ -1,9 +1,9 @@
 import SwiftUI
 import AppKit
-import StatsBarCore
+import SpecterCore
 
 @main
-struct StatsBarApp: App {
+struct SpecterApp: App {
     @State private var coordinator: TelemetryCoordinator
     @State private var settings = SettingsModel.shared
     @State private var showingSettings = false
@@ -22,7 +22,7 @@ struct StatsBarApp: App {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.interCardGap) {
                 // Popover Header
                 HStack(alignment: .center, spacing: DesignTokens.Spacing.small) {
-                    Text(showingSettings ? "Settings" : "StatsBar")
+                    Text(showingSettings ? "Settings" : "Specter")
                         .font(DesignTokens.Typography.cardTitle)
                         .foregroundStyle(.primary)
 
@@ -76,7 +76,7 @@ struct StatsBarApp: App {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .help("Quit StatsBar (⌘Q)")
+                    .help("Quit Specter (⌘Q)")
                     .keyboardShortcut("q", modifiers: .command)
                 }
 

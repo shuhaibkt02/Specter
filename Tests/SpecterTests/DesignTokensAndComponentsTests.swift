@@ -1,6 +1,6 @@
 import Testing
 import SwiftUI
-@testable import StatsBarCore
+@testable import SpecterCore
 
 @Suite("DesignTokens and Components Tests")
 @MainActor

@@ -1,7 +1,7 @@
 import Testing
 import Foundation
 import IOKit.ps
-import StatsBarCore
+import SpecterCore
 
 @Suite("BatteryCollector Tests")
 struct BatteryCollectorTests {

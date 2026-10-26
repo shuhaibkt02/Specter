@@ -9,8 +9,8 @@ install:
 	./scripts/install.sh
 
 run: install
-	open /Applications/StatsBar.app
+	open /Applications/Specter.app
 
 clean:
 	swift package clean
-	rm -rf StatsBar.app
+	rm -rf Specter.app

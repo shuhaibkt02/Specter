@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import StatsBarCore
+@testable import SpecterCore
 
 @Suite("SettingsModel Tests")
 @MainActor

@@ -142,7 +142,7 @@ public final class NetworkCollector: @unchecked Sendable {
     /// skipping virtual/VPN adapters like "utun".
     public static func resolveActiveInterfaceName() -> String {
         // 1. Try SystemConfiguration dynamic store
-        if let store = SCDynamicStoreCreate(nil, "StatsBar" as CFString, nil, nil) {
+        if let store = SCDynamicStoreCreate(nil, "Specter" as CFString, nil, nil) {
             for key in ["State:/Network/Global/IPv4", "State:/Network/Global/IPv6"] {
                 if let dict = SCDynamicStoreCopyValue(store, key as CFString) as? [String: Any],
                    let primary = dict["PrimaryInterface"] as? String,

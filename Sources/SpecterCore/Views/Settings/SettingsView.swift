@@ -132,7 +132,7 @@ public struct SettingsView: View {
 
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
                 Toggle("Show per-core breakdown in CPU card", isOn: $settings.showPerCoreBreakdown)
-                Toggle("Launch StatsBar at login", isOn: $settings.launchAtLogin)
+                Toggle("Launch Specter at login", isOn: $settings.launchAtLogin)
             }
             .toggleStyle(.checkbox)
             .font(DesignTokens.Typography.body)
