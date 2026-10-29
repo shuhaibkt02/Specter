@@ -26,8 +26,34 @@ public final class ProcessCloseConfirmationModel {
     }
 
     public private(set) var request: Request?
+    public private(set) var closingGroupIdentifiers: Set<String> = []
+    public private(set) var closingPIDs: Set<pid_t> = []
 
     public init() {}
+
+    public func markGroupClosing(_ identifier: String) {
+        closingGroupIdentifiers.insert(identifier)
+    }
+
+    public func clearGroupClosing(_ identifier: String) {
+        closingGroupIdentifiers.remove(identifier)
+    }
+
+    public func markPIDClosing(_ pid: pid_t) {
+        closingPIDs.insert(pid)
+    }
+
+    public func clearPIDClosing(_ pid: pid_t) {
+        closingPIDs.remove(pid)
+    }
+
+    public func isGroupClosing(_ identifier: String) -> Bool {
+        closingGroupIdentifiers.contains(identifier)
+    }
+
+    public func isPIDClosing(_ pid: pid_t) -> Bool {
+        closingPIDs.contains(pid)
+    }
 
     public func present(bundleIdentifier: String, appName: String) {
         request = Request(target: .app(bundleIdentifier: bundleIdentifier), appName: appName)

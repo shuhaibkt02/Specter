@@ -177,15 +177,25 @@ public struct ProcessListView: View {
             }
         }
         .frame(maxHeight: .infinity, alignment: .topLeading)
+        .onChange(of: closeConfirmationModel?.closingGroupIdentifiers) { _, _ in
+            hoveredGroups = nil
+        }
+        .onChange(of: closeConfirmationModel?.closingPIDs) { _, _ in
+            hoveredGroups = nil
+        }
     }
 
     @ViewBuilder
     private func groupRow(_ group: ProcessGroup) -> some View {
+        let isGroupClosing = closeConfirmationModel?.isGroupClosing(group.id) ?? false
+
         if !group.containsMultipleProcesses, let process = group.processes.first {
+            let isSingleClosing = isGroupClosing || (closeConfirmationModel?.isPIDClosing(process.id) ?? false)
             ProcessItemRow(
                 process: process,
                 metricType: selectedMetric,
                 allowQuit: selectedCategory == .user,
+                isClosing: isSingleClosing,
                 onQuit: onQuitProcess,
                 onEnd: onEndProcess,
                 onRequestEnd: requestEndProcess
@@ -196,6 +206,8 @@ public struct ProcessListView: View {
                 metricType: selectedMetric,
                 allowQuit: selectedCategory == .user,
                 isExpanded: expandedGroups.contains(group.id),
+                isClosing: isGroupClosing,
+                closeConfirmationModel: closeConfirmationModel,
                 onToggle: { toggleGroup(group.id) },
                 onQuitProcess: onQuitProcess,
                 onEndProcess: onEndProcess,
@@ -207,7 +219,7 @@ public struct ProcessListView: View {
                             appName: appName
                         )
                     }
-                    : nil,
+                    : nil
             )
         }
     }
@@ -235,6 +247,8 @@ private struct ProcessGroupRow: View {
     let metricType: ProcessMetricType
     let allowQuit: Bool
     let isExpanded: Bool
+    let isClosing: Bool
+    let closeConfirmationModel: ProcessCloseConfirmationModel?
     let onToggle: () -> Void
     let onQuitProcess: ((pid_t) -> Void)?
     let onEndProcess: ((pid_t) -> Bool)?
@@ -245,72 +259,104 @@ private struct ProcessGroupRow: View {
 
     var body: some View {
         VStack(spacing: 2) {
-            HStack(spacing: 5) {
-                // Interactive group header: tapping chevron, name, count, or metric toggles expansion
+            if isClosing {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+
+                    Text("Closing \(group.name)...")
+                        .font(DesignTokens.Typography.body)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+
+                    Text("(\(group.processes.count) \(group.processes.count == 1 ? "process" : "processes"))")
+                        .font(DesignTokens.Typography.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+
+                    Spacer()
+                }
+                .frame(minHeight: 28)
+                .padding(.horizontal, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.accentColor.opacity(0.08))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.accentColor.opacity(0.2), lineWidth: 0.5)
+                )
+                .transition(.opacity)
+            } else {
                 HStack(spacing: 5) {
-                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 12)
+                    // Interactive group header: tapping chevron, name, count, or metric toggles expansion
+                    HStack(spacing: 5) {
+                        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 12)
 
-                    Text(group.name)
-                        .font(.body)
-                        .lineLimit(1)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        Text(group.name)
+                            .font(.body)
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity, alignment: .leading)
 
-                    Text("\(group.processes.count) \(group.processes.count == 1 ? "process" : "processes")")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                        Text("\(group.processes.count) \(group.processes.count == 1 ? "process" : "processes")")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
 
-                    Text(metricType == .cpu ? group.formattedCPU : group.formattedRAM)
-                        .font(.body)
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                        .frame(minWidth: 48, alignment: .trailing)
+                        Text(metricType == .cpu ? group.formattedCPU : group.formattedRAM)
+                            .font(.body)
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                            .frame(minWidth: 48, alignment: .trailing)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        onToggle()
+                    }
+
+                    if allowQuit && onRequestClose != nil && group.processes.contains(where: { $0.groupIdentifier != nil }) {
+                        Button("Close") {
+                            if let identifier = group.processes.first?.groupIdentifier {
+                                onRequestClose?(identifier, group.name)
+                            }
+                        }
+                        .font(.system(size: 10, weight: .medium))
+                        .buttonStyle(.bordered)
+                        .controlSize(.mini)
+                        .help("Request \(group.name) to close normally")
+                    }
                 }
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    onToggle()
+                .frame(minHeight: 26)
+                .padding(.horizontal, 5)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(isHovered ? DesignTokens.Colors.hoverBackground : Color.clear)
+                )
+                .onHover { hovering in
+                    isHovered = hovering
                 }
 
-                if allowQuit && onRequestClose != nil && group.processes.contains(where: { $0.groupIdentifier != nil }) {
-                    Button("Close") {
-                        if let identifier = group.processes.first?.groupIdentifier {
-                            onRequestClose?(identifier, group.name)
+                if isExpanded {
+                    VStack(spacing: 2) {
+                        ForEach(group.processes) { process in
+                            ProcessItemRow(
+                                process: process,
+                                metricType: metricType,
+                                allowQuit: allowQuit,
+                                isClosing: isClosing || (closeConfirmationModel?.isPIDClosing(process.id) ?? false),
+                                onQuit: onQuitProcess,
+                                onEnd: onEndProcess,
+                                onRequestEnd: onRequestEndProcess
+                            )
+                            .padding(.leading, 14)
                         }
                     }
-                    .font(.system(size: 10, weight: .medium))
-                    .buttonStyle(.bordered)
-                    .controlSize(.mini)
-                    .help("Request \(group.name) to close normally")
+                    .transition(.opacity.combined(with: .move(edge: .top)))
                 }
-            }
-            .frame(minHeight: 26)
-            .padding(.horizontal, 5)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(isHovered ? DesignTokens.Colors.hoverBackground : Color.clear)
-            )
-            .onHover { hovering in
-                isHovered = hovering
-            }
-
-            if isExpanded {
-                VStack(spacing: 2) {
-                    ForEach(group.processes) { process in
-                        ProcessItemRow(
-                            process: process,
-                            metricType: metricType,
-                            allowQuit: allowQuit,
-                            onQuit: onQuitProcess,
-                            onEnd: onEndProcess,
-                            onRequestEnd: onRequestEndProcess
-                        )
-                        .padding(.leading, 14)
-                    }
-                }
-                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
     }
@@ -321,6 +367,7 @@ public struct ProcessItemRow: View {
     public let process: ProcessSnapshot
     public let metricType: ProcessMetricType
     public let allowQuit: Bool
+    public let isClosing: Bool
     public var onQuit: ((pid_t) -> Void)?
     public var onEnd: ((pid_t) -> Bool)?
     public var onRequestEnd: ((ProcessSnapshot) -> Void)?
@@ -332,6 +379,7 @@ public struct ProcessItemRow: View {
         process: ProcessSnapshot,
         metricType: ProcessMetricType,
         allowQuit: Bool = true,
+        isClosing: Bool = false,
         onQuit: ((pid_t) -> Void)? = nil,
         onEnd: ((pid_t) -> Bool)? = nil,
         onRequestEnd: ((ProcessSnapshot) -> Void)? = nil
@@ -339,6 +387,7 @@ public struct ProcessItemRow: View {
         self.process = process
         self.metricType = metricType
         self.allowQuit = allowQuit
+        self.isClosing = isClosing
         self.onQuit = onQuit
         self.onEnd = onEnd
         self.onRequestEnd = onRequestEnd
@@ -352,47 +401,66 @@ public struct ProcessItemRow: View {
     }
 
     public var body: some View {
-        HStack(spacing: DesignTokens.Spacing.small) {
-            Text(process.name)
-                .font(.body)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .strikethrough(isTerminated, color: .secondary)
-                .foregroundStyle(isTerminated ? .secondary : .primary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            Text("(\(process.id))")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-
-            Text(metricString)
-                .font(.body)
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
-                .frame(minWidth: 44, alignment: .trailing)
-
-            if allowQuit && !isTerminated {
-                Button("Close", role: .destructive) {
-                    requestEnd()
-                }
-                .font(.system(size: 10, weight: .medium))
-                .buttonStyle(.bordered)
-                .controlSize(.mini)
-                .help("Close \(process.name) (PID: \(process.id))")
+        if isClosing || isTerminated {
+            HStack(spacing: 8) {
+                ProgressView()
+                    .controlSize(.mini)
+                Text("Ending \(process.name) (PID: \(process.id))...")
+                    .font(DesignTokens.Typography.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Spacer()
             }
+            .frame(minHeight: 24)
+            .padding(.horizontal, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.primary.opacity(0.04))
+            )
+            .transition(.opacity)
+        } else {
+            HStack(spacing: DesignTokens.Spacing.small) {
+                Text(process.name)
+                    .font(.body)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .strikethrough(isTerminated, color: .secondary)
+                    .foregroundStyle(isTerminated ? .secondary : .primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text("(\(process.id))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+
+                Text(metricString)
+                    .font(.body)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    .frame(minWidth: 44, alignment: .trailing)
+
+                if allowQuit && !isTerminated {
+                    Button("Close", role: .destructive) {
+                        requestEnd()
+                    }
+                    .font(.system(size: 10, weight: .medium))
+                    .buttonStyle(.bordered)
+                    .controlSize(.mini)
+                    .help("Close \(process.name) (PID: \(process.id))")
+                }
+            }
+            .frame(minHeight: 24)
+            .padding(.horizontal, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isHovered ? DesignTokens.Colors.hoverBackground : Color.clear)
+            )
+            .opacity(isTerminated ? 0.3 : 1.0)
+            .onHover { hovering in
+                isHovered = hovering
+            }
+            .help("\(process.name) (PID: \(process.id)) — \(metricType == .cpu ? "CPU: " : "RAM: ")\(metricString)")
         }
-        .frame(minHeight: 24)
-        .padding(.horizontal, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(isHovered ? DesignTokens.Colors.hoverBackground : Color.clear)
-        )
-        .opacity(isTerminated ? 0.3 : 1.0)
-        .onHover { hovering in
-            isHovered = hovering
-        }
-        .help("\(process.name) (PID: \(process.id)) — \(metricType == .cpu ? "CPU: " : "RAM: ")\(metricString)")
     }
 
     @discardableResult

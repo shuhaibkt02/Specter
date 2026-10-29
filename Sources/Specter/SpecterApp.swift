@@ -298,34 +298,84 @@ struct SpecterApp: App {
     }
 
     private func endProcess(pid: pid_t) -> Bool {
+        closeConfirmation.markPIDClosing(pid)
         guard kill(pid, SIGTERM) == 0 else {
-            processActionError = "Could not end PID \(pid): \(String(cString: strerror(errno)))."
+            let err = errno
+            if err == ESRCH {
+                // Process already dead
+                closeConfirmation.clearPIDClosing(pid)
+                coordinator.tick()
+                return true
+            }
+            closeConfirmation.clearPIDClosing(pid)
+            processActionError = "Could not end PID \(pid): \(String(cString: strerror(err)))."
             return false
+        }
+
+        Task {
+            let start = DispatchTime.now()
+            while ProcessCollector.isPIDAlive(pid) {
+                try? await Task.sleep(nanoseconds: 150_000_000)
+                let elapsed = Double(DispatchTime.now().uptimeNanoseconds - start.uptimeNanoseconds) / 1_000_000_000.0
+                if elapsed > 4.0 {
+                    _ = kill(pid, SIGKILL)
+                    break
+                }
+            }
+            await MainActor.run {
+                closeConfirmation.clearPIDClosing(pid)
+                coordinator.tick()
+            }
         }
         return true
     }
 
     private func closeApp(bundleIdentifier: String) {
+        closeConfirmation.markGroupClosing(bundleIdentifier)
+
         let groupPIDs = Set(
             coordinator.allProcesses
                 .filter { $0.groupIdentifier == bundleIdentifier }
                 .map(\.id)
         )
-        guard let application = NSRunningApplication
+
+        let application = NSRunningApplication
             .runningApplications(withBundleIdentifier: bundleIdentifier)
             .first(where: { groupPIDs.contains($0.processIdentifier) })
-        else {
-            processActionError = "macOS could not find the running app to request a normal close."
+
+        if let application {
+            _ = application.terminate()
+        }
+
+        // Terminate any remaining helper PIDs belonging to this group
+        for pid in groupPIDs where pid != application?.processIdentifier {
+            _ = kill(pid, SIGTERM)
+        }
+
+        if application == nil && groupPIDs.isEmpty {
+            closeConfirmation.clearGroupClosing(bundleIdentifier)
+            coordinator.tick()
             return
         }
-        if !application.terminate() {
-            processActionError = "macOS did not accept the normal close request."
-            return
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            guard !application.isTerminated else { return }
-            let name = application.localizedName ?? bundleIdentifier
-            processActionError = "\(name) is still running after the close request. It may be running in the background."
+
+        Task {
+            let start = DispatchTime.now()
+            var remaining = groupPIDs
+            while !remaining.isEmpty {
+                try? await Task.sleep(nanoseconds: 150_000_000)
+                remaining = remaining.filter { ProcessCollector.isPIDAlive($0) }
+                let elapsed = Double(DispatchTime.now().uptimeNanoseconds - start.uptimeNanoseconds) / 1_000_000_000.0
+                if elapsed > 4.0 {
+                    for pid in remaining {
+                        _ = kill(pid, SIGKILL)
+                    }
+                    break
+                }
+            }
+            await MainActor.run {
+                closeConfirmation.clearGroupClosing(bundleIdentifier)
+                coordinator.tick()
+            }
         }
     }
 

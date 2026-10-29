@@ -138,6 +138,19 @@ public final class ProcessCollector: @unchecked Sendable {
         return true
     }
 
+    /// Checks whether a process PID is currently alive in the kernel.
+    public static func isPIDAlive(_ pid: pid_t) -> Bool {
+        guard pid > 0 else { return false }
+        if kill(pid, 0) == 0 {
+            return true
+        }
+        if errno == EPERM {
+            // Process exists but owned by root or another user
+            return true
+        }
+        return false
+    }
+
     /// Resolves human-readable process name without shelling out.
     public static func nameForPID(_ pid: pid_t) -> String {
         var nameBuffer = [CChar](repeating: 0, count: 256)
